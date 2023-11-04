@@ -1,5 +1,5 @@
 {
-  "include": ["./src/index.ts"],
+  "files": [ "src/index.ts" ],
   "compilerOptions": {
     "target": "ES2018",
     "lib": ["ES2021"],

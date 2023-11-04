@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/core",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A TypeScript library for creating ninja files (https://ninja-build.org/)",
   "author": "Elliot Goodrich",
   "engines": {
@@ -10,8 +10,7 @@
   "scripts": {
     "build": "npx tsc",
     "format": "npx prettier package.json tsconfig.json src --write",
-    "lint": "npx eslint src",
-    "docs": "typedoc --plugin typedoc-plugin-markdown --out docs src/index.ts"
+    "lint": "npx eslint src"
   },
   "keywords": [
     "ninja",
@@ -51,8 +50,6 @@
     "@typescript-eslint/parser": "^6.9.0",
     "eslint": "^8.52.0",
     "prettier": "^3.0.3",
-    "typedoc": "^0.25.2",
-    "typedoc-plugin-markdown": "^3.16.0",
     "typescript": "^5.2.2"
   }
 }
