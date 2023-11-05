@@ -153,6 +153,7 @@ type BuildArgs<A extends RuleArgs> = {
     implicitDeps?: string | readonly string[];
     implicitOut?: string | readonly string[];
     orderOnlyDeps?: string | readonly string[];
+    validations?: string | readonly string[];
     dyndep?: string;
     pool?: string;
   } & OptionalArgs<Omit<A, "command" | "description">>;
@@ -284,6 +285,18 @@ export class NinjaBuilder {
    * `undefined` values they will not be printed out in the rule declaration, but they change the
    * returned function to either require or accept respectively a variable with that given name.
    *
+   * The following properties are special and will not be added as ninja variables to the build
+   * edge, instead they they are understood directly by ninja and will be added to the build
+   * edge using the syntax described in
+   * [Ninja file reference](https://ninja-build.org/manual.html#ref_ninja_file).
+   *
+   *   - `out` - [Explicit outputs](https://ninja-build.org/manual.html#ref_outputs)
+   *   - `in` - [Explicit dependencies](https://ninja-build.org/manual.html#ref_dependencies)
+   *   - `implicitDeps` - [Implicit dependencies](https://ninja-build.org/manual.html#ref_dependencies)
+   *   - `implicitOut` - [Implicit outputs](https://ninja-build.org/manual.html#ref_outputs)
+   *   - `orderOnlyDeps` - [Order-only dependencies](https://ninja-build.org/manual.html#ref_dependencies)
+   *   - `validations` - [Validations](https://ninja-build.org/manual.html#validations)
+   *
    * @example
    * ```ts
    * import { NinjaBuilder, needs } from "@ninjutsu-build/core";
@@ -347,6 +360,7 @@ export class NinjaBuilder {
         implicitDeps,
         implicitOut,
         orderOnlyDeps,
+        validations,
         ...rest
       } = args;
       const inTyped = _in as undefined | string | readonly string[];
@@ -360,6 +374,7 @@ export class NinjaBuilder {
         concatPaths(inTyped, " ") +
         concatPaths(implicitDeps, " | ") +
         concatPaths(orderOnlyDeps, " || ") +
+        concatPaths(validations, " |@ ") +
         "\n";
 
       for (const name in rest) {

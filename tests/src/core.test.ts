@@ -213,6 +213,7 @@ test("Passing all arguments to a `NinjaRule`", () => {
     implicitDeps: "implicitDeps_",
     implicitOut: ["implicitOut_"],
     orderOnlyDeps: ["orderOnlyDeps_"],
+    validations: ["validations_"],
     pool: "pool",
     extra: 123,
   });
@@ -220,7 +221,7 @@ test("Passing all arguments to a `NinjaRule`", () => {
   expect(ninja.output).toEqual(`rule all
   command = [command]
   description = [desc]
-build out.txt | implicitOut_: all in.txt | implicitDeps_ || orderOnlyDeps_
+build out.txt | implicitOut_: all in.txt | implicitDeps_ || orderOnlyDeps_ |@ validations_
   dyndep = dyndep_
   command = command_
   description = description_
