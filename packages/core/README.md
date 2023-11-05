@@ -42,9 +42,9 @@ const ninja = new NinjaBuilder({
 
 // Create the `touch` rule
 const touch = ninja.rule("touch", {
-  out: needs<string>(),
   command: "touch $out",
   description: "Creating $out",
+  out: needs<string>(),
 });
 
 // Create a build edge using `touch` and store the value
@@ -53,12 +53,12 @@ const example = touch({
   out: "$builddir/example.stamp",
 });
 
-// Create the `cp` rule
+// Create the `copy` rule
 const copy = ninja.rule("cp", {
+  command: "cp $in $out",
+  description: "Copying $in to $out",
   out: needs<string>(),
   in: needs<string>(),
-  command: "copy $in $out",
-  description: "Copying $in to $out",
 });
 
 // Copy the file created previously
