@@ -1,9 +1,19 @@
 # Ninjutsu Build
 
-A TypeScript library for creating ninja files (https://ninja-build.org/).
+Easily create ninja build files with this TypeScript library (https://ninja-build.org/).
 
-`ninjutsu-build` makes it easy and type-safe to write fast code to generate a ninja
-file.
+## Why Ninjutsu Build?
+
+Some of the selling points of `ninjutsu-build` are:
+
+  * TypeScript
+  * Type-safe design - easy to create build rules that require certain variables, or
+    can have optionally specified variables
+  * Simple and quick - all methods calls write directly to a `string` property
+  * Ninja rules return the value of the `out` argument, which makes it easier to use
+    linting tools to find unused build artifatcts
+  * ES Module
+  * Zero dependencies
 
 ## Prerequisites
 
@@ -11,8 +21,11 @@ This project requires NodeJS (version 18 or later) and npm.
 
 ## Installation
 
+Most likely you require `@ninjutsu-build/core` as a `devDependency`, which can be
+achieved by running the following `npm` command:
+
 ```bash
-npm install @ninjutsu-build/core --save-dev
+$ npm install @ninjutsu-build/core --save-dev
 ```
 
 ## Basic Example
@@ -34,8 +47,11 @@ const touch = ninja.rule("touch", {
   description: "Creating $out",
 });
 
-// Create a build edge using `touch`
-const example = touch({ out: "$builddir/example.stamp" });
+// Create a build edge using `touch` and store the value
+// of the `out` property
+const example = touch({
+  out: "$builddir/example.stamp",
+});
 
 // Create the `cp` rule
 const copy = ninja.rule("cp", {
@@ -54,4 +70,3 @@ copy({
 // Write the ninja file to disk
 writeFileSync("build.ninja", ninja.output);
 ```
-
