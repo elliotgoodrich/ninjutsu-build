@@ -1,6 +1,6 @@
 # Ninjutsu Build
 
-Easily create ninja build files with this TypeScript library (https://ninja-build.org/).
+A TypeScript library for creating ninja files (https://ninja-build.org/).
 
 ## Why Ninjutsu Build?
 
