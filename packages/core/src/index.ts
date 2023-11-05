@@ -213,7 +213,7 @@ export class NinjaBuilder {
    *
    * writeDirSync(ninja.output, "build.ninja");
    * ```
-   
+   *
    * would generate the following ninja file:
    *
    * ```text
