@@ -1,4 +1,13 @@
-import { NinjaBuilder, Variable, console, needs } from "@ninjutsu-build/core";
+import {
+  NinjaBuilder,
+  Variable,
+  console,
+  needs,
+  orderOnlyDeps,
+  implicitDeps,
+  validations,
+  implicitOut,
+} from "@ninjutsu-build/core";
 import { assert } from "tsafe/assert";
 import type { Equals } from "tsafe";
 
@@ -210,10 +219,10 @@ test("Passing all arguments to a `NinjaRule`", () => {
     dyndep: "dyndep_",
     command: "command_",
     description: "description_",
-    implicitDeps: "implicitDeps_",
-    implicitOut: ["implicitOut_"],
-    orderOnlyDeps: ["orderOnlyDeps_"],
-    validations: ["validations_"],
+    [implicitDeps]: "implicitDeps_",
+    [implicitOut]: ["implicitOut_"],
+    [orderOnlyDeps]: ["orderOnlyDeps_"],
+    [validations]: ["validations_"],
     pool: "pool",
     extra: 123,
   });

@@ -16,6 +16,18 @@ export type Placeholder<T> = {
   __ninjutsuPlaceholder: T;
 };
 
+export const implicitDeps = Symbol("Implicit Dependencies");
+export type ImplicitDeps = typeof implicitDeps;
+
+export const implicitOut = Symbol("Implicit Outputs");
+export type ImplicitOut = typeof implicitOut;
+
+export const orderOnlyDeps = Symbol("Order-Only Dependencies");
+export type OrderOnlyDeps = typeof orderOnlyDeps;
+
+export const validations = Symbol("Validations");
+export type Validations = typeof validations;
+
 /**
  * Return `undefined` typed as a {@link Placeholder}, which can be passed to
  * {@link NinjaBuilder#rule} in order to generate a function that accepts a required
@@ -150,10 +162,10 @@ type BuildArgs<A extends RuleArgs> = {
       : never
     : never;
 } & RequiredArgs<Omit<A, "out">> & {
-    implicitDeps?: string | readonly string[];
-    implicitOut?: string | readonly string[];
-    orderOnlyDeps?: string | readonly string[];
-    validations?: string | readonly string[];
+    [implicitDeps]?: string | readonly string[];
+    [implicitOut]?: string | readonly string[];
+    [orderOnlyDeps]?: string | readonly string[];
+    [validations]?: string | readonly string[];
     dyndep?: string;
     pool?: string;
   } & OptionalArgs<Omit<A, "command" | "description">>;
@@ -292,10 +304,14 @@ export class NinjaBuilder {
    *
    *   - `out` - [Explicit outputs](https://ninja-build.org/manual.html#ref_outputs)
    *   - `in` - [Explicit dependencies](https://ninja-build.org/manual.html#ref_dependencies)
-   *   - `implicitDeps` - [Implicit dependencies](https://ninja-build.org/manual.html#ref_dependencies)
-   *   - `implicitOut` - [Implicit outputs](https://ninja-build.org/manual.html#ref_outputs)
-   *   - `orderOnlyDeps` - [Order-only dependencies](https://ninja-build.org/manual.html#ref_dependencies)
-   *   - `validations` - [Validations](https://ninja-build.org/manual.html#validations)
+   *   - `[implicitDeps]` - [Implicit dependencies](https://ninja-build.org/manual.html#ref_dependencies)
+   *   - `[implicitOut]` - [Implicit outputs](https://ninja-build.org/manual.html#ref_outputs)
+   *   - `[orderOnlyDeps]` - [Order-only dependencies](https://ninja-build.org/manual.html#ref_dependencies)
+   *   - `[validations]` - [Validations](https://ninja-build.org/manual.html#validations)
+   *
+   * All properties keyed by `string` can be referenced in the ninja file, including the special
+   * variables `out` and `in` as `$out` and `$in` respectively.  The `Symbol`-keyed properties
+   * do not have a name and cannot be referenced.
    *
    * @example
    * ```ts
@@ -351,30 +367,18 @@ export class NinjaBuilder {
       }
     }
 
-    return <const I extends BuildArgs<A>>(args: I): I["out"] => {
-      const {
-        //@ts-expect-error TypeScript cannot guarantee that `in` is a property of `I`, even though
-        // we only need an optional property and it is fine for this to be undefined.
-        in: _in,
-        out,
-        implicitDeps,
-        implicitOut,
-        orderOnlyDeps,
-        validations,
-        ...rest
-      } = args;
-      const inTyped = _in as undefined | string | readonly string[];
-
+    return <const I extends BuildArgs<A> & { in?: string | readonly string[] }>(args: I): I["out"] => {
+      const { in: _in, out, ...rest } = args;
       this.output +=
         "build " +
         concatPaths(out) +
-        concatPaths(implicitOut, " | ") +
+        concatPaths(args[implicitOut], " | ") +
         ": " +
         name +
-        concatPaths(inTyped, " ") +
-        concatPaths(implicitDeps, " | ") +
-        concatPaths(orderOnlyDeps, " || ") +
-        concatPaths(validations, " |@ ") +
+        concatPaths(_in, " ") +
+        concatPaths(args[implicitDeps], " | ") +
+        concatPaths(args[orderOnlyDeps], " || ") +
+        concatPaths(args[validations], " |@ ") +
         "\n";
 
       for (const name in rest) {
