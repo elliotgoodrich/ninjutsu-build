@@ -11,14 +11,14 @@
   "license": "MIT",
   "devDependencies": {
     "@ninjutsu-build/core": "file:../packages/core",
-    "@types/jest": "^29.5.6",
-    "jest": "^29.7.0",
-    "tsafe": "^1.6.5",
-    "typescript": "^5.2.2",
+    "@types/jest": "^29.5.8",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
     "eslint": "^8.52.0",
-    "prettier": "^3.0.3"
+    "jest": "^29.7.0",
+    "prettier": "^3.0.3",
+    "tsafe": "^1.6.5",
+    "typescript": "^5.2.2"
   },
   "jest": {
     "testEnvironment": "node"
