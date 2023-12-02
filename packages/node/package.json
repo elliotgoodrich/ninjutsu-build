@@ -1,10 +1,10 @@
 {
-  "name": "@ninjutsu-build/core",
-  "version": "0.2.1",
-  "description": "Easily create ninja build files with this TypeScript library (https://ninja-build.org/)",
+  "name": "@ninjutsu-build/node",
+  "version": "0.1.0",
+  "description": "A ninjutsu-build plugin to generate ninja rules to execute JavaScript with node",
   "author": "Elliot Goodrich",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.18.0"
   },
   "main": "dist",
   "scripts": {
@@ -13,14 +13,21 @@
     "lint": "npx eslint src"
   },
   "keywords": [
+    "ninjutsu",
+    "ninjutsu-build",
     "ninja",
     "ninja-build",
-    "build"
+    "build",
+    "node"
   ],
   "license": "MIT",
   "files": [
     "dist/index.js",
-    "dist/index.d.ts"
+    "dist/index.d.ts",
+    "dist/makeDepfile.js",
+    "lib/file.cjs",
+    "lib/hookRequire.cjs",
+    "lib/makeDepfile.cjs"
   ],
   "prettier": {
     "trailingComma": "all"
@@ -45,7 +52,11 @@
     ],
     "rules": {}
   },
+  "peerDependencies": {
+    "@ninjutsu-build/core": "^0.1.0"
+  },
   "devDependencies": {
+    "@types/node": "^20.9.0",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
     "eslint": "^8.52.0",

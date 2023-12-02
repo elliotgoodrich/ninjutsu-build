@@ -16,16 +16,16 @@ export type Placeholder<T> = {
   __ninjutsuPlaceholder: T;
 };
 
-export const implicitDeps = Symbol("Implicit Dependencies");
+export const implicitDeps: unique symbol = Symbol("Implicit Dependencies");
 export type ImplicitDeps = typeof implicitDeps;
 
-export const implicitOut = Symbol("Implicit Outputs");
+export const implicitOut: unique symbol = Symbol("Implicit Outputs");
 export type ImplicitOut = typeof implicitOut;
 
-export const orderOnlyDeps = Symbol("Order-Only Dependencies");
+export const orderOnlyDeps: unique symbol = Symbol("Order-Only Dependencies");
 export type OrderOnlyDeps = typeof orderOnlyDeps;
 
-export const validations = Symbol("Validations");
+export const validations: unique symbol = Symbol("Validations");
 export type Validations = typeof validations;
 
 /**
@@ -415,8 +415,7 @@ export class NinjaBuilder {
       if (value !== undefined) {
         if (name in ruleVariables) {
           this.output += "  " + name + " = " + value + "\n";
-        }
-        else {
+        } else {
           defaultValues[name] = value;
         }
       }

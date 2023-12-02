@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Test suite for @ninjutsu-build/*",
   "scripts": {
+    "build": "npx tsc",
     "test": "npx tsc && npx jest dist",
     "format": "npx prettier package.json tsconfig.json src --write",
     "lint": "npx eslint src"
@@ -11,6 +12,7 @@
   "license": "MIT",
   "devDependencies": {
     "@ninjutsu-build/core": "file:../packages/core",
+    "@ninjutsu-build/node": "file:../packages/node",
     "@types/jest": "^29.5.8",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
