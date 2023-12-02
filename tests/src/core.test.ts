@@ -271,10 +271,10 @@ test("basic variables", () => {
   const out2: "out2" = rule({ out: "out2", other: false, foo: 32 });
   expect(out2).toEqual("out2");
   const out3: "out3" = rule({
+    foo: 32,
     out: "out3",
     other: false,
     myStr: "bar",
-    foo: 32,
   });
   expect(out3).toEqual("out3");
 
@@ -283,16 +283,16 @@ myBool = false
 myStr = hi
 rule generate
   command = echo '$content' > $out
-  foo = 1
 build out: generate
   content = myContent
   other = true
+  foo = 1
 build out2: generate
   other = false
   foo = 32
 build out3: generate
+  foo = 32
   other = false
   myStr = bar
-  foo = 32
 `);
 });

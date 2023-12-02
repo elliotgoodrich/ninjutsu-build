@@ -133,8 +133,30 @@ export type RuleArgs = {
   generator?: 1;
   depfile?: string;
   deps?: "gcc" | "msvc";
+  msvc_deps_prefix?: string;
   rspfile?: string;
   rspfile_content?: string;
+};
+
+/**
+ * All variables that are understood by ninja's rules.
+ *
+ * @private
+ */
+const ruleVariables: Record<string, true> = {
+  command: true,
+  depfile: true,
+  deps: true,
+  msvc_deps_prefix: true,
+  description: true,
+  dyndep: true,
+  generator: true,
+  in: true,
+  out: true,
+  restat: true,
+  rspfile: true,
+  rspfile_content: true,
+  pool: true,
 };
 
 type OptionalArgs<V extends Record<string, unknown>> = {
@@ -288,19 +310,44 @@ export class NinjaBuilder {
   }
 
   /**
-   * Write a rule declaration with the specified `name` and `variables` and return a function that
-   * will write build edges for that rule when invoked returns the `out` property of the first
+   * Write a rule declaration with the specified `name` and `variables`. Return a function that
+   * will write build edges for that rule when invoked and return the `out` property of the first
    * argument.
    *
-   * Each property in `variables` containing a non-`undefined` value will be written as a variable
-   * for this rule. Note that since both {@link Placeholder<T>} and {@link Variable<T>} are always
-   * `undefined` values they will not be printed out in the rule declaration, but they change the
-   * returned function to either require or accept respectively a variable with that given name.
+   * Non-`undefined` properties in `variables` with the following names only will be written to the
+   * ninja rule:
    *
-   * The following properties are special and will not be added as ninja variables to the build
-   * edge, instead they they are understood directly by ninja and will be added to the build
+   *   - `command`
+   *   - `depfile`
+   *   - `deps`
+   *   - `msvc_deps_prefix`
+   *   - `description`
+   *   - `dyndep`
+   *   - `generator`
+   *   - `in`
+   *   - `out`
+   *   - `restat`
+   *   - `rspfile`
+   *   - `rspfile_content`
+   *   - `pool`
+   *
+   * The meaning of these variables can be found in the ninja documentation under
+   * [rule variables](https://ninja-build.org/manual.html#ref_rule).
+   *
+   * Other non-`undefined` values will not be written to the ninja rule, but instead they will be taken
+   * as default values for variables in build edges created by the returned function.  These variables
+   * can be overridden by passing in values when invoking the returned function.
+   *
+   * Note that since both {@link Placeholder<T>} and {@link Variable<T>} are always
+   * `undefined` values they will not be printed out in the rule declaration or build edges.  However, they
+   * will change the type of the returned function to either require or accept (respectively) a
+   * variable with that given name.
+   *
+   * In the object passed to the returned function, following properties are special and will not be added as ninja
+   * variables, instead they are understood directly by ninja and will be added to the build
    * edge using the syntax described in
-   * [Ninja file reference](https://ninja-build.org/manual.html#ref_ninja_file).
+   * [Ninja file reference](https://ninja-build.org/manual.html#ref_ninja_file).  The values of these properties
+   * will be escaped using {@link escapePath}.
    *
    *   - `out` - [Explicit outputs](https://ninja-build.org/manual.html#ref_outputs)
    *   - `in` - [Explicit dependencies](https://ninja-build.org/manual.html#ref_dependencies)
@@ -309,7 +356,7 @@ export class NinjaBuilder {
    *   - `[orderOnlyDeps]` - [Order-only dependencies](https://ninja-build.org/manual.html#ref_dependencies)
    *   - `[validations]` - [Validations](https://ninja-build.org/manual.html#validations)
    *
-   * All properties keyed by `string` can be referenced in the ninja file, including the special
+   * All properties keyed by `string` can be referenced as ninja variables, including the special
    * variables `out` and `in` as `$out` and `$in` respectively.  The `Symbol`-keyed properties
    * do not have a name and cannot be referenced.
    *
@@ -346,7 +393,8 @@ export class NinjaBuilder {
    *   args: "",
    * });
    *
-   * // And we can override this variable on each separate build edge
+   * // And we can optionally override this variable on each separate build edge, whereas
+   * // `level` is required by the type system
    * gzip({
    *   out: "$builddir/data.tar.gz",
    *   in: archive,
@@ -360,31 +408,54 @@ export class NinjaBuilder {
     variables: A,
   ): <const I extends Expand<BuildArgs<A>>>(args: I) => I["out"] {
     this.output += "rule " + name + "\n";
+
+    let defaultValues: Record<string, any> = {};
     for (const name in variables) {
       const value = variables[name];
       if (value !== undefined) {
-        this.output += "  " + name + " = " + value + "\n";
+        if (name in ruleVariables) {
+          this.output += "  " + name + " = " + value + "\n";
+        }
+        else {
+          defaultValues[name] = value;
+        }
       }
     }
 
-    return <const I extends BuildArgs<A> & { in?: string | readonly string[] }>(args: I): I["out"] => {
-      const { in: _in, out, ...rest } = args;
+    return <const I extends BuildArgs<A> & { in?: string | readonly string[] }>(
+      buildVariables: I,
+    ): I["out"] => {
+      const { in: _in, out, ...rest } = buildVariables;
       this.output +=
         "build " +
         concatPaths(out) +
-        concatPaths(args[implicitOut], " | ") +
+        concatPaths(buildVariables[implicitOut], " | ") +
         ": " +
         name +
         concatPaths(_in, " ") +
-        concatPaths(args[implicitDeps], " | ") +
-        concatPaths(args[orderOnlyDeps], " || ") +
-        concatPaths(args[validations], " |@ ") +
+        concatPaths(buildVariables[implicitDeps], " | ") +
+        concatPaths(buildVariables[orderOnlyDeps], " || ") +
+        concatPaths(buildVariables[validations], " |@ ") +
         "\n";
 
+      // Add all variables passed in, attempting to replace all `undefined` values
+      // with defaults provided when creating the rule
       for (const name in rest) {
-        const value = rest[name as keyof typeof rest];
+        const v = rest[name as keyof typeof rest];
+        const value = v !== undefined ? v : defaultValues[name];
         if (value !== undefined) {
           this.output += "  " + name + " = " + value + "\n";
+        }
+      }
+
+      // Add all variables that have been defaulted in the rule but not specified
+      // in the build edge
+      for (const name in defaultValues) {
+        if (!(name in rest)) {
+          const value = defaultValues[name];
+          if (value != undefined) {
+            this.output += "  " + name + " = " + value + "\n";
+          }
         }
       }
 
