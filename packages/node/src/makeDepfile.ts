@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { isBuiltin } from 'node:module';
 import { open, logDependency } from "../lib/file.cjs";
 
 export async function initialize(out: string): Promise<void> {
@@ -10,6 +11,8 @@ export async function load(
   context: unknown,
   nextLoad: (url: string, context: unknown) => Promise<unknown>,
 ): Promise<unknown> {
-  logDependency(fileURLToPath(url));
+  if (!isBuiltin(url)) {
+    logDependency(fileURLToPath(url));
+  }
   return nextLoad(url, context);
 }
