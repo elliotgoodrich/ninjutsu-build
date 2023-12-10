@@ -1,12 +1,12 @@
 {
-  "files": ["src/core.test.ts", "src/node.test.ts", "src/tsc.test.ts"],
+  "files": ["src/index.ts", "src/parseTSC.mts", "src/makeDyndeps.mts"],
   "compilerOptions": {
     "target": "ES2018",
     "lib": ["ES2021"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "declaration": true,
-    "outDir": "dist",
+    "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,

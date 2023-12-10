@@ -1,0 +1,14 @@
+{
+  "name": "@ninjutsu-build/basic2",
+  "version": "0.0.1",
+  "description": "Basic2 example for @ninjutsu-build",
+  "scripts": {},
+  "author": "Elliot Goodrich",
+  "license": "MIT",
+  "devDependencies": {
+    "@ninjutsu-build/core": "file:../../packages/core",
+    "@ninjutsu-build/tsc": "file:../../packages/tsc",
+    "@types/node": "^20.10.4",
+    "typescript": "^5.2.2"
+  }
+}

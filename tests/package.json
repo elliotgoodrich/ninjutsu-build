@@ -13,6 +13,7 @@
   "devDependencies": {
     "@ninjutsu-build/core": "file:../packages/core",
     "@ninjutsu-build/node": "file:../packages/node",
+    "@ninjutsu-build/tsc": "file:../packages/tsc",
     "@types/jest": "^29.5.8",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
