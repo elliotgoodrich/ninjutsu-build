@@ -36,12 +36,12 @@ const ninja = new NinjaBuilder({
   builddir: ".mybuilddir",
 });
 
-// Create the `tsc` rule and compile `index.ts` to `$builddir/index.js`
+// Create the `tsc` rule and compile `index.ts` to `dist`
 const tsc = makeTSCRule(ninja);
 const js = tsc({
   in: ["index.ts"],
   compilerOptions: {
-    outDir: "$builddir",
+    outDir: "dist",
   }
 });
 

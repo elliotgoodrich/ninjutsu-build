@@ -10,13 +10,12 @@ const ninja = new NinjaBuilder({
 const tsc = makeTSCRule(ninja);
 const [index] = tsc({
     in: ["src/index.ts"],
-    dyndepName: "$builddir/tsdeps.txt",
     compilerOptions: {
         target: "ES2021",
         lib: ["ES2021"],
         module: "NodeNext",
         moduleResolution: "NodeNext",
-        //declaration: true,
+        declaration: true,
         isolatedModules: true,
         outDir: "$builddir/dist",
         esModuleInterop: true,

@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/tsc",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Create a ninjutsu-build rule for running the TypeScript compiler (tsc)",
   "author": "Elliot Goodrich",
   "engines": {
@@ -25,8 +25,7 @@
   "files": [
     "dist/index.js",
     "dist/index.d.ts",
-    "dist/makeDyndeps.mjs",
-    "dist/parseTSC.mjs"
+    "dist/runTSC.mjs"
   ],
   "prettier": {
     "trailingComma": "all"

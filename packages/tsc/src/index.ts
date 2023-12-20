@@ -52,8 +52,7 @@ function compilerOptionsToArray(
   );
 }
 
-// In order to pipe to $out we need to run with `cmd /c` on Windows.  Additionally
-// we mention `node.exe` with the file extension to avoid the `winpty node` alias.
+// In order to pipe to $out we need to run with `cmd /c` on Windows.
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
 /**
@@ -80,15 +79,17 @@ const prefix = platform() === "win32" ? "cmd /c " : "";
  * const checked = typecheck({
  *   in: ["src/entrypoint1.ts", "src/entrypoint2.ts"],
  *   out: "$builddir/typechecked.stamp",
- *   noImplicitAny: true,
- *   isolatedModules: true,
+ *   compilerOptions: {
+ *     noImplicitAny: true,
+ *     isolatedModules: true,
+ *   },
  * });
  * ```
  *
  * Will create an empty file `$builddir/typechecked.stamp` if both `src/entrypoint1.ts` and
  * `src/entrypoint2.ts` (and all TypeScript files they `import`) are valid TypeScript.
  */
-export function makeTypecheckRule(
+export function makeTypeCheckRule(
   ninja: NinjaBuilder,
   name = "typecheck",
 ): <O extends string>(a: {
@@ -96,12 +97,14 @@ export function makeTypecheckRule(
   out: O;
   compilerOptions?: CompilerOptions;
   [implicitDeps]?: readonly string[];
+  [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
   [validations]?: readonly string[];
 }) => O {
   const rule = ninja.rule(name, {
     command:
-      prefix + "node node_modules/@ninjutsu-build/tsc/dist/parseTSC.mjs $out $args -- $in",
+      prefix +
+      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --out $out --depfile $out.depfile $in --listFilesOnly $args",
     description: "Typechecking $in",
     in: needs<readonly string[]>(),
     out: needs<string>(),
@@ -114,6 +117,7 @@ export function makeTypecheckRule(
     out: O;
     compilerOptions?: CompilerOptions;
     [implicitDeps]?: readonly string[];
+    [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
     [validations]?: readonly string[];
   }): O => {
@@ -129,8 +133,6 @@ export function makeTypecheckRule(
  * Create a rule in the specified `ninja` builder with the specified `name` that will
  * run `tsc` to type check and generate corresponding TypeScript files for `in` and
  * any TypeScript files that they depend on.
- *
- * Note that only one element of `in` (i.e. 1 entry point) is supported at the moment.
  *
  * It is not necessary to specify all TypeScript files for the `in` argument, only the
  * entry points are needed.  Other TypeScript files that are `import`ed are added as
@@ -149,70 +151,80 @@ export function makeTypecheckRule(
  *
  * const ninja = new NinjaBuilder();
  * const tsc = makeTSCRule(ninja);
- * const [indexJS] = tsc({
- *   in: ["src/index.ts"],
- *   outDir: "dist",
- *   noImplicitAny: true,
- *   isolatedModules: true,
+ * const [indexJS, cliJS] = tsc({
+ *   in: ["src/index.ts", "src/cli.mts"],
+ *   compilerOptions: {
+ *     outDir: "dist",
+ *     noImplicitAny: true,
+ *     isolatedModules: true,
+ *   },
  * });
  *
  * writeFileSync("build.ninja", ninja.output);
  * ```
  *
- * Will return `["dist/index.js"]` for `indexJS` and will create a `build.ninja` file that will
- * compile the TypeScript files `index.ts` and all their dependencies to JavaScript.
+ * Will return `"dist/index.js"` for `indexJS` and `"dist/cli.mjs"` for `cliJS` and will create
+ * a `build.ninja` file that will compile those TypeScript files and all their dependencies to
+ * JavaScript.
+ *
+ * By passing `declaration: true` as one of the compiler options we will generate
+ * corresponding definition files.  Each TypeScript file passed to `in` have 2
+ * entries in the returned array, the first being the corresponding JavaScript
+ * and the second being the associated declaration file.
+ *
+ * For example:
+ *
+ * ```ts
+ * import { NinjaBuilder } from "@ninjutsu-build/core";
+ * import { makeTSCRule } from "@ninjutsu-build/tsc";
+ * import { writeFileSync } from "fs";
+ *
+ * const ninja = new NinjaBuilder();
+ * const tsc = makeTSCRule(ninja);
+ * const [indexJS, indexDJS, cliJS, cliDJS] = tsc({
+ *   in: ["src/index.ts", "src/cli.mts"],
+ *   compilerOptions: {
+ *     outDir: "dist",
+ *     declaration: true,
+ *   },
+ * });
+ *
+ * writeFileSync("build.ninja", ninja.output);
+ * ```
  */
 export function makeTSCRule(
   ninja: NinjaBuilder,
   name = "tsc",
-  dyndepRuleName = "tscDyndep",
 ): (a: {
-  in: readonly [string];
+  in: readonly string[];
   compilerOptions?: CompilerOptions;
-  dyndepName: string;
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
   [validations]?: readonly string[];
 }) => readonly string[] {
-  const tscDyndep = ninja.rule(dyndepRuleName, {
-    // TODO: Change this to something we can run with `npx`?
+  const tsc = ninja.rule(name, {
     command:
       prefix +
-      "node node_modules/@ninjutsu-build/tsc/dist/makeDyndeps.mjs $args $in > $out",
-    description: "Getting compilation dependencies for compiling $in",
+      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --out $out --depfile $out.depfile --listFiles $args $in",
+    description: "Compiling $in",
+    depfile: "$out.depfile",
+    deps: "gcc",
     in: needs<readonly string[]>(),
     out: needs<string>(),
     args: needs<string>(),
   });
-  const tsc = ninja.rule(name, {
-    command: prefix + "npx tsc $in $args",
-    description: "Compiling $in",
-    in: needs<readonly [string]>(),
-    out: needs<readonly [string]>(),
-    args: needs<string>(),
-  });
   return (a: {
-    in: readonly [string];
+    in: readonly string[];
     compilerOptions?: CompilerOptions;
-    dyndepName: string;
     [implicitDeps]?: readonly string[];
     [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
     [validations]?: readonly string[];
-  }): readonly [string] => {
-    const {
-      compilerOptions,
-      dyndepName,
-      [orderOnlyDeps]: orderDeps = [],
-      [implicitOut]: otherOuts = [],
-      ...rest
-    } = a;
+  }): readonly string[] => {
+    const { compilerOptions, ...rest } = a;
     const argsArr = compilerOptionsToArray(a.compilerOptions);
     const commandLine = ts.parseCommandLine(a.in.concat(argsArr));
-
-    const args = argsArr.join(" ");
-    const dyndep = tscDyndep({ out: dyndepName, in: a.in, args });
 
     // We need to set this to something, else we get a debug exception
     // in `getOutputFileNames`
@@ -223,15 +235,13 @@ export function makeTSCRule(
         ts.getOutputFileNames(commandLine, path, false),
       )
       .map(escapePath);
-    return tsc({
+    const [first, ...others] = out;
+    tsc({
       ...rest,
-      // We only handle one output file at the moment, the rest will
-      // go into [implicitOut].
-      out: [out[0]],
-      dyndep,
-      args,
-      [implicitOut]: otherOuts.concat(out.slice(1)),
-      [orderOnlyDeps]: orderDeps.concat(dyndep),
+      out: first,
+      args: argsArr.join(" "),
+      [implicitOut]: others,
     });
+    return out;
   };
 }

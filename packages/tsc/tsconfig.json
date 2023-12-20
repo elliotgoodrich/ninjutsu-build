@@ -1,5 +1,5 @@
 {
-  "files": ["src/index.ts", "src/parseTSC.mts", "src/makeDyndeps.mts"],
+  "files": ["src/index.ts", "src/runTSC.mts"],
   "compilerOptions": {
     "target": "ES2018",
     "lib": ["ES2021"],
