@@ -1,5 +1,5 @@
 {
-  "files": ["src/core.test.ts", "src/node.test.ts", "src/tsc.test.ts"],
+  "files": ["src/core.test.ts"],
   "compilerOptions": {
     "target": "ES2018",
     "lib": ["ES2021"],

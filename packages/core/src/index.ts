@@ -409,7 +409,7 @@ export class NinjaBuilder {
   ): <const I extends Expand<BuildArgs<A>>>(args: I) => I["out"] {
     this.output += "rule " + name + "\n";
 
-    let defaultValues: Record<string, any> = {};
+    const defaultValues: Record<string, unknown> = {};
     for (const name in variables) {
       const value = variables[name];
       if (value !== undefined) {

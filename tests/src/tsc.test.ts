@@ -1,19 +1,22 @@
+import test from "node:test";
+import { strict as assert } from "node:assert";
 import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
 
 test("makeTSCRule", () => {
   const ninja = new NinjaBuilder();
   const tsc = makeTSCRule(ninja);
-  expect(
+  assert.deepEqual(
     tsc({
       in: ["src/common/index.ts"],
       compilerOptions: {
         outDir: "output",
       },
     }),
-  ).toEqual(["output/index.js"]);
+    ["output/index.js"],
+  );
 
-  expect(
+  assert.deepEqual(
     tsc({
       in: ["index.cts"],
       compilerOptions: {
@@ -21,14 +24,29 @@ test("makeTSCRule", () => {
         outDir: "",
       },
     }),
-  ).toEqual(["index.cjs", "index.d.cts"]);
-  expect(ninja.output).toMatchSnapshot();
+    ["index.cjs", "index.d.cts"],
+  );
+  assert.equal(
+    ninja.output,
+    `rule tsc
+  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFiles $args -- $in
+  description = Compiling $in
+  depfile = $out.depfile
+  deps = gcc
+build output/index.js: tsc src/common/index.ts
+  cwd = .
+  args = --outDir output
+build index.cjs: tsc index.cts
+  cwd = .
+  args = --declaration --outDir 
+`,
+  );
 });
 
 test("makeTypeCheckRule", () => {
   const ninja = new NinjaBuilder();
   const typecheck = makeTypeCheckRule(ninja);
-  expect(
+  assert.equal(
     typecheck({
       in: ["src/common/index.ts"],
       out: "$builddir/typechecked.stamp",
@@ -36,7 +54,19 @@ test("makeTypeCheckRule", () => {
         outDir: "output",
       },
     }),
-  ).toEqual("$builddir/typechecked.stamp");
+    "$builddir/typechecked.stamp",
+  );
 
-  expect(ninja.output).toMatchSnapshot();
+  assert.equal(
+    ninja.output,
+    `rule typecheck
+  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFilesOnly $args $in
+  description = Typechecking $in
+  depfile = $out.depfile
+  deps = gcc
+build $builddir/typechecked.stamp: typecheck src/common/index.ts
+  cwd = .
+  args = --outDir output
+`,
+  );
 });

@@ -7,13 +7,14 @@ import {
   validations,
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
-import {
+import type {
   TsConfigSourceFile,
-  type CompilerOptions,
-  type CompilerOptionsValue,
+  CompilerOptions,
+  CompilerOptionsValue,
 } from "typescript";
 import ts from "typescript";
 import { platform } from "os";
+import { join } from "path";
 
 function compilerOptionToArray(
   name: string,
@@ -96,6 +97,7 @@ export function makeTypeCheckRule(
   in: readonly string[];
   out: O;
   compilerOptions?: CompilerOptions;
+  cwd?: string;
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
@@ -104,27 +106,30 @@ export function makeTypeCheckRule(
   const rule = ninja.rule(name, {
     command:
       prefix +
-      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --out $out --depfile $out.depfile $in --listFilesOnly $args",
+      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFilesOnly $args $in",
     description: "Typechecking $in",
     in: needs<readonly string[]>(),
     out: needs<string>(),
     depfile: "$out.depfile",
     deps: "gcc",
     args: needs<string>(),
+    cwd: needs<string>(),
   });
   return <O extends string>(a: {
     in: readonly string[];
     out: O;
     compilerOptions?: CompilerOptions;
+    cwd?: string;
     [implicitDeps]?: readonly string[];
     [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
     [validations]?: readonly string[];
   }): O => {
-    const { compilerOptions, ...rest } = a;
+    const { compilerOptions, cwd = ".", ...rest } = a;
     return rule({
       ...rest,
-      args: compilerOptionsToArray(a.compilerOptions).join(" "),
+      cwd,
+      args: compilerOptionsToArray(compilerOptions).join(" "),
     });
   };
 }
@@ -198,6 +203,7 @@ export function makeTSCRule(
 ): (a: {
   in: readonly string[];
   compilerOptions?: CompilerOptions;
+  cwd?: string;
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
@@ -206,24 +212,26 @@ export function makeTSCRule(
   const tsc = ninja.rule(name, {
     command:
       prefix +
-      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --out $out --depfile $out.depfile --listFiles $args $in",
+      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFiles $args -- $in",
     description: "Compiling $in",
     depfile: "$out.depfile",
     deps: "gcc",
     in: needs<readonly string[]>(),
     out: needs<string>(),
+    cwd: needs<string>(),
     args: needs<string>(),
   });
   return (a: {
     in: readonly string[];
     compilerOptions?: CompilerOptions;
+    cwd?: string;
     [implicitDeps]?: readonly string[];
     [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
     [validations]?: readonly string[];
   }): readonly string[] => {
-    const { compilerOptions, ...rest } = a;
-    const argsArr = compilerOptionsToArray(a.compilerOptions);
+    const { compilerOptions, cwd = ".", ...rest } = a;
+    const argsArr = compilerOptionsToArray(compilerOptions);
     const commandLine = ts.parseCommandLine(a.in.concat(argsArr));
 
     // We need to set this to something, else we get a debug exception
@@ -234,11 +242,12 @@ export function makeTSCRule(
       .flatMap((path: string) =>
         ts.getOutputFileNames(commandLine, path, false),
       )
-      .map(escapePath);
+      .map((p) => join(cwd, escapePath(p)).replaceAll("\\", "/"));
     const [first, ...others] = out;
     tsc({
       ...rest,
       out: first,
+      cwd,
       args: argsArr.join(" "),
       [implicitOut]: others,
     });

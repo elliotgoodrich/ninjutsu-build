@@ -7,11 +7,6 @@
     "node": ">=18.18.0"
   },
   "main": "dist",
-  "scripts": {
-    "build": "npx tsc",
-    "format": "npx prettier package.json tsconfig.json src --write",
-    "lint": "npx eslint src"
-  },
   "keywords": [
     "ninjutsu",
     "ninjutsu-build",
@@ -29,38 +24,11 @@
     "lib/hookRequire.cjs",
     "lib/makeDepfile.cjs"
   ],
-  "prettier": {
-    "trailingComma": "all"
-  },
-  "eslintConfig": {
-    "env": {
-      "browser": true,
-      "node": true,
-      "es2021": true
-    },
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "ecmaVersion": "latest",
-      "sourceType": "module"
-    },
-    "plugins": [
-      "@typescript-eslint"
-    ],
-    "rules": {}
-  },
   "peerDependencies": {
     "@ninjutsu-build/core": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.9.0",
-    "@typescript-eslint/eslint-plugin": "^6.9.0",
-    "@typescript-eslint/parser": "^6.9.0",
-    "eslint": "^8.52.0",
-    "prettier": "^3.0.3",
     "typescript": "^5.2.2"
   }
 }

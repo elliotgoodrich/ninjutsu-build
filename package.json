@@ -1,0 +1,23 @@
+{
+  "name": "ninjutsu-build-configure",
+  "version": "0.0.1",
+  "description": "Configuration script to generate ninja build files for @ninjutsu-build",
+  "scripts": {
+    "build": "ninja"
+  },
+  "author": "Elliot Goodrich",
+  "license": "MIT",
+  "devDependencies": {
+    "@ninjutsu-build/core": "^0.2.1",
+    "@ninjutsu-build/node": "^0.2.0",
+    "@ninjutsu-build/tsc": "^0.4.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "glob": "^10.3.10",
+    "prettier": "^3.1.1"
+  },
+  "prettier": {
+    "trailingComma": "all"
+  }
+}

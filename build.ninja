@@ -1,0 +1,108 @@
+builddir = .builddir
+ninja_required_version = 1.11
+
+# Rules
+rule tsc
+  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFiles $args -- $in
+  description = Compiling $in
+  depfile = $out.depfile
+  deps = gcc
+rule node
+  command = cmd /c node.exe --require "@ninjutsu-build/node/lib/hookRequire.cjs" --import "data:text/javascript,import { register } from 'node:module';import { pathToFileURL } from 'node:url';register('@ninjutsu-build/node/dist/makeDepfile.js', pathToFileURL('./'), { data: '$out' });" $in $args > $out
+  description = Creating $out from 'node $in'
+  depfile = $out.depfile
+  deps = gcc
+rule npmci
+  command = cmd /c npm ci --prefix $cwd --silent
+  description = Running npm ci in $cwd
+rule tar
+  command = tar -czvf $args $out $in
+  description = Creating $out
+rule prettier
+  command = cmd /c npm exec --prefix $cwd prettier -- $in --write --log-level silent && type NUL > $out
+  description = Running prettier on $in
+rule eslint
+  command = cmd /c npm exec --prefix $cwd eslint -- $in > $out
+  description = Linting $in
+
+# Configuration
+build $builddir/.ninjutsu-build/prettier/package.json: prettier package.json
+  cwd = .
+build $builddir/.ninjutsu-build/prettier/configure.mjs: prettier configure.mjs
+  cwd = .
+build node_modules/.package-lock.json: npmci package.json
+  cwd = .
+
+# packages/tsc
+build $builddir/.ninjutsu-build/prettier/packages/tsc/package.json: prettier packages/tsc/package.json
+  cwd = packages/tsc
+build packages/tsc/node_modules/.package-lock.json: npmci packages/tsc/package.json
+  cwd = packages/tsc
+build $builddir/.ninjutsu-build/eslint/packages/tsc/src/runTSC.mts: eslint packages/tsc/src/runTSC.mts
+  cwd = packages/tsc
+build $builddir/.ninjutsu-build/prettier/packages/tsc/src/runTSC.mts: prettier packages/tsc/src/runTSC.mts |@ $builddir/.ninjutsu-build/eslint/packages/tsc/src/runTSC.mts
+  cwd = packages/tsc
+build $builddir/.ninjutsu-build/eslint/packages/tsc/src/index.ts: eslint packages/tsc/src/index.ts
+  cwd = packages/tsc
+build $builddir/.ninjutsu-build/prettier/packages/tsc/src/index.ts: prettier packages/tsc/src/index.ts |@ $builddir/.ninjutsu-build/eslint/packages/tsc/src/index.ts
+  cwd = packages/tsc
+build packages/tsc/dist/runTSC.mjs | packages/tsc/dist/runTSC.d.mts packages/tsc/dist/index.js packages/tsc/dist/index.d.ts: tsc packages/tsc/src/runTSC.mts packages/tsc/src/index.ts | $builddir/.ninjutsu-build/prettier/packages/tsc/src/runTSC.mts $builddir/.ninjutsu-build/prettier/packages/tsc/src/index.ts packages/tsc/node_modules/.package-lock.json
+  cwd = packages/tsc
+  args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
+
+# packages/node
+build $builddir/.ninjutsu-build/prettier/packages/node/package.json: prettier packages/node/package.json
+  cwd = packages/node
+build packages/node/node_modules/.package-lock.json: npmci packages/node/package.json
+  cwd = packages/node
+build $builddir/.ninjutsu-build/eslint/packages/node/src/makeDepfile.ts: eslint packages/node/src/makeDepfile.ts
+  cwd = packages/node
+build $builddir/.ninjutsu-build/prettier/packages/node/src/makeDepfile.ts: prettier packages/node/src/makeDepfile.ts |@ $builddir/.ninjutsu-build/eslint/packages/node/src/makeDepfile.ts
+  cwd = packages/node
+build $builddir/.ninjutsu-build/eslint/packages/node/src/index.ts: eslint packages/node/src/index.ts
+  cwd = packages/node
+build $builddir/.ninjutsu-build/prettier/packages/node/src/index.ts: prettier packages/node/src/index.ts |@ $builddir/.ninjutsu-build/eslint/packages/node/src/index.ts
+  cwd = packages/node
+build packages/node/dist/makeDepfile.js | packages/node/dist/makeDepfile.d.ts packages/node/dist/index.js packages/node/dist/index.d.ts: tsc packages/node/src/makeDepfile.ts packages/node/src/index.ts | $builddir/.ninjutsu-build/prettier/packages/node/src/makeDepfile.ts $builddir/.ninjutsu-build/prettier/packages/node/src/index.ts packages/node/node_modules/.package-lock.json
+  cwd = packages/node
+  args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
+
+# packages/core
+build $builddir/.ninjutsu-build/prettier/packages/core/package.json: prettier packages/core/package.json
+  cwd = packages/core
+build packages/core/node_modules/.package-lock.json: npmci packages/core/package.json
+  cwd = packages/core
+build $builddir/.ninjutsu-build/eslint/packages/core/src/index.ts: eslint packages/core/src/index.ts
+  cwd = packages/core
+build $builddir/.ninjutsu-build/prettier/packages/core/src/index.ts: prettier packages/core/src/index.ts |@ $builddir/.ninjutsu-build/eslint/packages/core/src/index.ts
+  cwd = packages/core
+build packages/core/dist/index.js | packages/core/dist/index.d.ts: tsc packages/core/src/index.ts | $builddir/.ninjutsu-build/prettier/packages/core/src/index.ts packages/core/node_modules/.package-lock.json
+  cwd = packages/core
+  args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
+
+# Tests
+build $builddir/.ninjutsu-build/prettier/tests/package.json: prettier tests/package.json
+  cwd = tests
+build tests/node_modules/.package-lock.json: npmci tests/package.json
+  cwd = tests
+build $builddir/.ninjutsu-build/eslint/tests/src/tsc.test.ts: eslint tests/src/tsc.test.ts
+  cwd = tests
+build $builddir/.ninjutsu-build/prettier/tests/src/tsc.test.ts: prettier tests/src/tsc.test.ts |@ $builddir/.ninjutsu-build/eslint/tests/src/tsc.test.ts
+  cwd = tests
+build $builddir/.ninjutsu-build/eslint/tests/src/node.test.ts: eslint tests/src/node.test.ts
+  cwd = tests
+build $builddir/.ninjutsu-build/prettier/tests/src/node.test.ts: prettier tests/src/node.test.ts |@ $builddir/.ninjutsu-build/eslint/tests/src/node.test.ts
+  cwd = tests
+build $builddir/.ninjutsu-build/eslint/tests/src/core.test.ts: eslint tests/src/core.test.ts
+  cwd = tests
+build $builddir/.ninjutsu-build/prettier/tests/src/core.test.ts: prettier tests/src/core.test.ts |@ $builddir/.ninjutsu-build/eslint/tests/src/core.test.ts
+  cwd = tests
+build tests/dist/tsc.test.js | tests/dist/node.test.js tests/dist/core.test.js: tsc tests/src/tsc.test.ts tests/src/node.test.ts tests/src/core.test.ts | $builddir/.ninjutsu-build/prettier/tests/src/tsc.test.ts $builddir/.ninjutsu-build/prettier/tests/src/node.test.ts $builddir/.ninjutsu-build/prettier/tests/src/core.test.ts tests/node_modules/.package-lock.json
+  cwd = tests
+  args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
+build $builddir/tests/dist/tsc.test.js.result.txt: node tests/dist/tsc.test.js || packages/tsc/dist/runTSC.mjs packages/tsc/dist/runTSC.d.mts packages/tsc/dist/index.js packages/tsc/dist/index.d.ts packages/node/dist/makeDepfile.js packages/node/dist/makeDepfile.d.ts packages/node/dist/index.js packages/node/dist/index.d.ts packages/core/dist/index.js packages/core/dist/index.d.ts
+  args = --test
+build $builddir/tests/dist/node.test.js.result.txt: node tests/dist/node.test.js || packages/tsc/dist/runTSC.mjs packages/tsc/dist/runTSC.d.mts packages/tsc/dist/index.js packages/tsc/dist/index.d.ts packages/node/dist/makeDepfile.js packages/node/dist/makeDepfile.d.ts packages/node/dist/index.js packages/node/dist/index.d.ts packages/core/dist/index.js packages/core/dist/index.d.ts
+  args = --test
+build $builddir/tests/dist/core.test.js.result.txt: node tests/dist/core.test.js || packages/tsc/dist/runTSC.mjs packages/tsc/dist/runTSC.d.mts packages/tsc/dist/index.js packages/tsc/dist/index.d.ts packages/node/dist/makeDepfile.js packages/node/dist/makeDepfile.d.ts packages/node/dist/index.js packages/node/dist/index.d.ts packages/core/dist/index.js packages/core/dist/index.d.ts
+  args = --test

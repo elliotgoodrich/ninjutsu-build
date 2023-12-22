@@ -12,7 +12,6 @@ Some of the selling points of `ninjutsu-build` are:
   * Simple and quick - all methods calls write directly to a `string` property
   * Ninja rules return the value of the `out` argument, which makes it easier to use
     linting tools to find unused build artifatcts
-  * ES Module
   * Zero dependencies
 
 ## Prerequisites

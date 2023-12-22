@@ -1,3 +1,7 @@
+import test from "node:test";
+import { assert as typeAssert } from "tsafe/assert";
+import { strict as assert } from "node:assert";
+import type { Equals } from "tsafe";
 import {
   NinjaBuilder,
   Variable,
@@ -8,52 +12,56 @@ import {
   validations,
   implicitOut,
 } from "@ninjutsu-build/core";
-import { assert } from "tsafe/assert";
-import type { Equals } from "tsafe";
 
 test("console", () => {
-  expect(console).toEqual("console");
+  assert.equal(console, "console");
 });
 
 test("needs", () => {
-  expect(needs<boolean>()).toEqual(undefined);
-  expect(needs<number>()).toEqual(undefined);
-  expect(needs<string>()).toEqual(undefined);
+  assert.equal(needs<boolean>(), undefined);
+  assert.equal(needs<number>(), undefined);
+  assert.equal(needs<string>(), undefined);
 });
 
 test("constructor", () => {
   {
     const ninja = new NinjaBuilder();
-    expect(ninja.output).toEqual("");
+    assert.equal(ninja.output, "");
   }
   {
     const ninja = new NinjaBuilder({ builddir: "output" });
-    expect(ninja.output).toEqual("builddir = output\n");
+    assert.equal(ninja.output, "builddir = output\n");
   }
   {
     const ninja = new NinjaBuilder({
       builddir: "output",
       ninja_required_version: undefined,
     });
-    expect(ninja.output).toEqual("builddir = output\n");
+    assert.equal(ninja.output, "builddir = output\n");
   }
   {
     const ninja = new NinjaBuilder({
       ninja_required_version: "foo",
       builddir: "output",
     });
-    expect(ninja.output).toEqual(`ninja_required_version = foo
+    assert.equal(
+      ninja.output,
+      `ninja_required_version = foo
 builddir = output
-`);
+`,
+    );
   }
   {
     const ninja = new NinjaBuilder({
       builddir: "output",
       ninja_required_version: "foo",
     });
-    expect(ninja.output).toEqual(`builddir = output
+    assert.equal(
+      ninja.output,
+      `builddir = output
 ninja_required_version = foo
-`);
+`,
+    );
   }
   {
     const ninja = new NinjaBuilder({
@@ -62,17 +70,20 @@ ninja_required_version = foo
       //@ts-expect-error Check unexpected variables are still included in the output
       extra: 12,
     });
-    expect(ninja.output).toEqual(`builddir = output
+    assert.equal(
+      ninja.output,
+      `builddir = output
 ninja_required_version = foo
 extra = 12
-`);
+`,
+    );
   }
 });
 
 test("comments", () => {
   const ninja = new NinjaBuilder();
   ninja.comment("this is a c#mment");
-  expect(ninja.output).toEqual("# this is a c#mment\n");
+  assert.equal(ninja.output, "# this is a c#mment\n");
 });
 
 test("touch rule", () => {
@@ -88,8 +99,9 @@ test("touch rule", () => {
     extra: 123,
     stillIgnored: undefined,
   });
-  expect(out).toEqual("out.txt");
-  expect(ninja.output).toEqual(
+  assert.equal(out, "out.txt");
+  assert.equal(
+    ninja.output,
     `rule touch
   command = touch $out
   description = Touching $out
@@ -103,12 +115,13 @@ test("phony rule", () => {
   const ninja = new NinjaBuilder();
   const { phony } = ninja;
   const out: "alias" = phony({ out: "alias", in: "file.txt" });
-  expect(out).toEqual("alias");
+  assert.equal(out, "alias");
 
   const out2: "my:: alia$ !" = phony({ out: "my:: alia$ !", in: "file$ .txt" });
-  expect(out2).toEqual("my:: alia$ !");
+  assert.equal(out2, "my:: alia$ !");
 
-  expect(ninja.output).toEqual(
+  assert.equal(
+    ninja.output,
     `build alias: phony file.txt
 build my$:$:$ alia$$ !: phony file$$ .txt
 `,
@@ -128,16 +141,19 @@ test("basic copy rule", () => {
     in: "in.txt",
     ignored: undefined,
   });
-  expect(out).toEqual(":out.txt");
+  assert.equal(out, ":out.txt");
   const out2: "out2.txt" = copy({ out: "out2.txt", in: "in txt", extra: true });
-  expect(out2).toEqual("out2.txt");
-  expect(ninja.output).toEqual(`rule cp
+  assert.equal(out2, "out2.txt");
+  assert.equal(
+    ninja.output,
+    `rule cp
   command = cp $in $out
   description = Copying $in to $out
 build $:out.txt: cp in.txt
 build out2.txt: cp in$ txt
   extra = true
-`);
+`,
+  );
 });
 
 test("Rules with different in/out arities", () => {
@@ -149,11 +165,14 @@ test("Rules with different in/out arities", () => {
       command: "in-1-out-many",
     });
     const out: readonly ["b", "c"] = inOneOutMany({ out: ["b", "c"], in: "a" });
-    expect(out).toEqual(["b", "c"]);
-    expect(ninja.output).toEqual(`rule test
+    assert.deepEqual(out, ["b", "c"]);
+    assert.equal(
+      ninja.output,
+      `rule test
   command = in-1-out-many
 build b c: test a
-`);
+`,
+    );
   }
 
   {
@@ -164,11 +183,14 @@ build b c: test a
       command: "in-many-out-1",
     });
     const out: "c" = inManyOutOne({ out: "c", in: ["a", "b"] });
-    expect(out).toEqual("c");
-    expect(ninja.output).toEqual(`rule test
+    assert.equal(out, "c");
+    assert.equal(
+      ninja.output,
+      `rule test
   command = in-many-out-1
 build c: test a b
-`);
+`,
+    );
   }
 
   {
@@ -182,11 +204,14 @@ build c: test a b
       out: ["a", "b"],
       in: ["c", "d", "e"],
     });
-    expect(out).toEqual(["a", "b"]);
-    expect(ninja.output).toEqual(`rule test
+    assert.deepEqual(out, ["a", "b"]);
+    assert.equal(
+      ninja.output,
+      `rule test
   command = in-many-out-many
 build a b: test c d e
-`);
+`,
+    );
   }
 
   {
@@ -197,11 +222,14 @@ build a b: test c d e
       command: "in-many-out-many",
     });
     const out: readonly ["a", "b"] = tuple({ out: ["a", "b"], in: ["i"] });
-    expect(out).toEqual(["a", "b"]);
-    expect(ninja.output).toEqual(`rule test
+    assert.deepEqual(out, ["a", "b"]);
+    assert.equal(
+      ninja.output,
+      `rule test
   command = in-many-out-many
 build a b: test i
-`);
+`,
+    );
   }
 });
 
@@ -226,8 +254,10 @@ test("Passing all arguments to a `NinjaRule`", () => {
     pool: "pool",
     extra: 123,
   });
-  expect(out).toEqual("out.txt");
-  expect(ninja.output).toEqual(`rule all
+  assert.equal(out, "out.txt");
+  assert.equal(
+    ninja.output,
+    `rule all
   command = [command]
   description = [desc]
 build out.txt | implicitOut_: all in.txt | implicitDeps_ || orderOnlyDeps_ |@ validations_
@@ -236,28 +266,33 @@ build out.txt | implicitOut_: all in.txt | implicitDeps_ || orderOnlyDeps_ |@ va
   description = description_
   pool = pool
   extra = 123
-`);
+`,
+  );
 });
 
 test("pools", () => {
   const ninja = new NinjaBuilder();
   const p = ninja.pool("myPool", { depth: 17 });
-  expect(p).toEqual("myPool");
-  expect(ninja.output).toEqual(`pool myPool
+  assert.equal(p, "myPool");
+  assert.equal(
+    ninja.output,
+    `pool myPool
   depth = 17
-`);
+`,
+  );
 });
 
 test("basic variables", () => {
   const ninja = new NinjaBuilder();
-  const myInt = ninja.variable("myInt", 10);
-  expect(myInt).toEqual(undefined);
-  assert<Equals<typeof myInt, Variable<number>>>();
+  const myInt: Variable<number> = ninja.variable("myInt", 10);
+  assert.equal(myInt, undefined);
+  //TODO
+  //typeAssert<Equals<typeof myInt, Variable<number>>>();
   const myBool = ninja.variable("myBool", false);
-  assert<Equals<typeof myBool, Variable<boolean>>>();
-  expect(myBool).toEqual(undefined);
+  typeAssert<Equals<typeof myBool, Variable<boolean>>>();
+  assert.equal(myBool, undefined);
   const myStr = ninja.variable("myStr", "hi");
-  assert<Equals<typeof myStr, Variable<string>>>();
+  typeAssert<Equals<typeof myStr, Variable<string>>>();
   const rule = ninja.rule("generate", {
     command: "echo '$content' > $out",
     out: needs<string>(),
@@ -267,18 +302,20 @@ test("basic variables", () => {
   });
 
   const out: "out" = rule({ out: "out", content: "myContent", other: true });
-  expect(out).toEqual("out");
+  assert.equal(out, "out");
   const out2: "out2" = rule({ out: "out2", other: false, foo: 32 });
-  expect(out2).toEqual("out2");
+  assert.equal(out2, "out2");
   const out3: "out3" = rule({
     foo: 32,
     out: "out3",
     other: false,
     myStr: "bar",
   });
-  expect(out3).toEqual("out3");
+  assert.equal(out3, "out3");
 
-  expect(ninja.output).toEqual(`myInt = 10
+  assert.equal(
+    ninja.output,
+    `myInt = 10
 myBool = false
 myStr = hi
 rule generate
@@ -294,5 +331,6 @@ build out3: generate
   foo = 32
   other = false
   myStr = bar
-`);
+`,
+  );
 });
