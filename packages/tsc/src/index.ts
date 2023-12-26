@@ -101,7 +101,7 @@ export function makeTypeCheckRule(
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
-  [validations]?: readonly string[];
+  [validations]?: (out: string) => readonly string[];
 }) => O {
   const rule = ninja.rule(name, {
     command:
@@ -123,7 +123,7 @@ export function makeTypeCheckRule(
     [implicitDeps]?: readonly string[];
     [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
-    [validations]?: readonly string[];
+    [validations]?: (out: string) => readonly string[];
   }): O => {
     const { compilerOptions, cwd = ".", ...rest } = a;
     return rule({
@@ -207,7 +207,7 @@ export function makeTSCRule(
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
-  [validations]?: readonly string[];
+  [validations]?: (out: readonly string[]) => readonly string[];
 }) => readonly string[] {
   const tsc = ninja.rule(name, {
     command:
@@ -228,9 +228,14 @@ export function makeTSCRule(
     [implicitDeps]?: readonly string[];
     [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
-    [validations]?: readonly string[];
+    [validations]?: (out: readonly string[]) => readonly string[];
   }): readonly string[] => {
-    const { compilerOptions, cwd = ".", ...rest } = a;
+    const {
+      compilerOptions,
+      cwd = ".",
+      [validations]: _validations,
+      ...rest
+    } = a;
     const argsArr = compilerOptionsToArray(compilerOptions);
     const commandLine = ts.parseCommandLine(a.in.concat(argsArr));
 
@@ -244,12 +249,17 @@ export function makeTSCRule(
       )
       .map((p) => join(cwd, escapePath(p)).replaceAll("\\", "/"));
     const [first, ...others] = out;
+    /* eslint-disable @typescript-eslint/no-unused-vars */
     tsc({
       ...rest,
       out: first,
       cwd,
       args: argsArr.join(" "),
       [implicitOut]: others,
+      [validations]:
+        _validations === undefined
+          ? undefined
+          : (_: string) => _validations(out),
     });
     return out;
   };

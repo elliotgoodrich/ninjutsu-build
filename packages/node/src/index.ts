@@ -4,6 +4,7 @@ import {
   implicitDeps,
   implicitOut,
   validations,
+  orderOnlyDeps,
 } from "@ninjutsu-build/core";
 import { platform } from "os";
 
@@ -53,8 +54,9 @@ export function makeNodeRule(
   in: string;
   out: O;
   [implicitDeps]?: readonly string[];
+  [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
-  [validations]?: readonly string[];
+  [validations]?: (out: string) => readonly string[];
 }) => O {
   return ninja.rule(name, {
     command,
