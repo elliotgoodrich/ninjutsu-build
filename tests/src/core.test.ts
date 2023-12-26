@@ -285,12 +285,11 @@ test("pools", () => {
 test("basic variables", () => {
   const ninja = new NinjaBuilder();
   const myInt: Variable<number> = ninja.variable("myInt", 10);
-  assert.equal(myInt, undefined);
-  //TODO
-  //typeAssert<Equals<typeof myInt, Variable<number>>>();
+  typeAssert<Equals<typeof myInt, Variable<number>>>();
+  assert.equal(myInt, "$myInt");
   const myBool = ninja.variable("myBool", false);
   typeAssert<Equals<typeof myBool, Variable<boolean>>>();
-  assert.equal(myBool, undefined);
+  assert.equal(myBool, "$myBool");
   const myStr = ninja.variable("myStr", "hi");
   typeAssert<Equals<typeof myStr, Variable<string>>>();
   const rule = ninja.rule("generate", {
@@ -303,13 +302,13 @@ test("basic variables", () => {
 
   const out: "out" = rule({ out: "out", content: "myContent", other: true });
   assert.equal(out, "out");
-  const out2: "out2" = rule({ out: "out2", other: false, foo: 32 });
+  const out2: "out2" = rule({ out: "out2", other: false, foo: 32, myStr });
   assert.equal(out2, "out2");
   const out3: "out3" = rule({
     foo: 32,
     out: "out3",
     other: false,
-    myStr: "bar",
+    myStr: ninja.variable("empty", ""),
   });
   assert.equal(out3, "out3");
 
@@ -327,10 +326,11 @@ build out: generate
 build out2: generate
   other = false
   foo = 32
+empty = 
 build out3: generate
   foo = 32
   other = false
-  myStr = bar
+  myStr = $empty
 `,
   );
 });

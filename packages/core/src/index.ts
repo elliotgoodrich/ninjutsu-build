@@ -3,7 +3,7 @@
  * passed to {@link NinjaBuilder#rule} in order to generate a function that accepts an
  * optional property of type `T`.
  */
-export type Variable<T> = {
+export type Variable<T> = string & {
   __ninjutsuVariable: T;
 };
 
@@ -341,10 +341,10 @@ export class NinjaBuilder {
    * as default values for variables in build edges created by the returned function.  These variables
    * can be overridden by passing in values when invoking the returned function.
    *
-   * Note that since both {@link Placeholder<T>} and {@link Variable<T>} are always
-   * `undefined` values they will not be printed out in the rule declaration or build edges.  However, they
-   * will change the type of the returned function to either require or accept (respectively) a
-   * variable with that given name.
+   * Note that as {@link Placeholder<T>} is always `undefined` it will not be printed out in the rule
+   * declaration or build edges.  However, both {@link Placeholder<T>} and {@link Variable<T>} will change
+   * the type of the returned function to either require or accept (respectively) a  variable with that given
+   * name.
    *
    * In the object passed to the returned function, following properties are special and will not be added as ninja
    * variables, instead they are understood directly by ninja and will be added to the build
@@ -423,7 +423,8 @@ export class NinjaBuilder {
       if (value !== undefined) {
         if (name in ruleVariables) {
           this.output += "  " + name + " = " + value + "\n";
-        } else {
+        } else if (value !== `$${name}`) {
+          // Skip all variables that point to themselves (e.g. foo = $foo)
           defaultValues[name] = value;
         }
       }
@@ -458,7 +459,8 @@ export class NinjaBuilder {
       for (const name in rest) {
         const v = rest[name as keyof typeof rest];
         const value = v !== undefined ? v : defaultValues[name];
-        if (value !== undefined) {
+        if (value !== undefined && value !== `$${name}`) {
+          // Also skip all variables that point to themselves (e.g. foo = $foo)
           output += "  " + name + " = " + value + "\n";
         }
       }
@@ -468,7 +470,7 @@ export class NinjaBuilder {
       for (const name in defaultValues) {
         if (!(name in rest)) {
           const value = defaultValues[name];
-          if (value != undefined) {
+          if (value !== undefined) {
             output += "  " + name + " = " + value + "\n";
           }
         }
@@ -515,7 +517,7 @@ export class NinjaBuilder {
 
   /**
    * Write a top-level variable declaration with the specified `name` and `value`, and return
-   * `undefined` typed as a {@link Variable} that can be passed to {@link rule} in order to
+   * a {@link Variable} with a value of `$name` that can be passed to {@link rule} in order to
    * generate a function that accepts an optional property of type `T`.
    *
    * Creating multiple variables with the same name will result in an invalid ninja file.
@@ -559,13 +561,14 @@ export class NinjaBuilder {
    * rule cp:
    *   command = cp $in $out $args
    * build $builddir/out.txt: cp src/in.txt
+   *   args = $args
    * build $builddir/alias.txt: cp src/link.txt
    *   args = --dereference
    * ```
    */
   variable<T>(name: string, value: T): Variable<T> {
     this.output += name + " = " + value + "\n";
-    return undefined as unknown as Variable<T>;
+    return ("$" + name) as Variable<T>;
   }
 
   /**
