@@ -177,17 +177,20 @@ type Expand<T extends object> = T extends infer O
     : never
   : never;
 
-type BuildArgs<A extends RuleArgs> = {
-  out: A["out"] extends Placeholder<infer P>
+type BuildArgs<
+  A extends RuleArgs,
+  O = A["out"] extends Placeholder<infer P>
     ? P extends string | readonly string[]
       ? P
       : never
-    : never;
+    : never,
+> = {
+  out: O;
 } & RequiredArgs<Omit<A, "out">> & {
     [implicitDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
     [orderOnlyDeps]?: string | readonly string[];
-    [validations]?: string | readonly string[];
+    [validations]?: (out: O) => readonly string[];
     dyndep?: string;
     pool?: string;
   } & OptionalArgs<Omit<A, "command" | "description">>;
@@ -356,6 +359,11 @@ export class NinjaBuilder {
    *   - `[orderOnlyDeps]` - [Order-only dependencies](https://ninja-build.org/manual.html#ref_dependencies)
    *   - `[validations]` - [Validations](https://ninja-build.org/manual.html#validations)
    *
+   * `validations` may have a dependency on the output of the rule and because of this, if supplied, `validations`
+   * must be a function, which will be passed the `out` property.  Although not particularly useful when you know
+   * the `out` property, `ninjutsu-build` plugins do not take an `out` and instead generate `out` from other
+   * properties.
+   *
    * All properties keyed by `string` can be referenced as ninja variables, including the special
    * variables `out` and `in` as `$out` and `$in` respectively.  The `Symbol`-keyed properties
    * do not have a name and cannot be referenced.
@@ -425,7 +433,10 @@ export class NinjaBuilder {
       buildVariables: I,
     ): I["out"] => {
       const { in: _in, out, ...rest } = buildVariables;
-      this.output +=
+
+      // Use a temporary string to not interweave multiple calls on this object
+      // if the `validations` calls methods on this `NinjaBuilder`
+      let output =
         "build " +
         concatPaths(out) +
         concatPaths(buildVariables[implicitOut], " | ") +
@@ -434,7 +445,12 @@ export class NinjaBuilder {
         concatPaths(_in, " ") +
         concatPaths(buildVariables[implicitDeps], " | ") +
         concatPaths(buildVariables[orderOnlyDeps], " || ") +
-        concatPaths(buildVariables[validations], " |@ ") +
+        concatPaths(
+          buildVariables[validations] === undefined
+            ? undefined
+            : buildVariables[validations]?.(out),
+          " |@ ",
+        ) +
         "\n";
 
       // Add all variables passed in, attempting to replace all `undefined` values
@@ -443,7 +459,7 @@ export class NinjaBuilder {
         const v = rest[name as keyof typeof rest];
         const value = v !== undefined ? v : defaultValues[name];
         if (value !== undefined) {
-          this.output += "  " + name + " = " + value + "\n";
+          output += "  " + name + " = " + value + "\n";
         }
       }
 
@@ -453,10 +469,12 @@ export class NinjaBuilder {
         if (!(name in rest)) {
           const value = defaultValues[name];
           if (value != undefined) {
-            this.output += "  " + name + " = " + value + "\n";
+            output += "  " + name + " = " + value + "\n";
           }
         }
       }
+
+      this.output += output;
 
       return out;
     };

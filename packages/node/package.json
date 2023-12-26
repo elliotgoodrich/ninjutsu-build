@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/node",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "description": "A ninjutsu-build plugin to generate ninja rules to execute JavaScript with node",
   "author": "Elliot Goodrich",
   "engines": {
@@ -16,16 +16,8 @@
     "node"
   ],
   "license": "MIT",
-  "files": [
-    "dist/index.js",
-    "dist/index.d.ts",
-    "dist/makeDepfile.js",
-    "lib/file.cjs",
-    "lib/hookRequire.cjs",
-    "lib/makeDepfile.cjs"
-  ],
   "peerDependencies": {
-    "@ninjutsu-build/core": "^0.2.0"
+    "@ninjutsu-build/core": "^0.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.9.0",

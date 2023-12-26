@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 const Module = require("module");
 const { dirname } = require("node:path");
 const { logDependency } = require("./file.cjs");
@@ -14,7 +15,6 @@ Module.prototype.require = function (id) {
       const err = new Error();
       const paths = [dirname(err.stack[2].getFileName())];
       logDependency(require.resolve(id, { paths }));
-    } catch (err) {
     } finally {
       Error.prepareStackTrace = _prepareStackTrace;
     }

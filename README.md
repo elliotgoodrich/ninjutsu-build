@@ -105,8 +105,10 @@ writeFileSync("build.ninja", ninja.output);
 
 ### Setup
 
-  1. `npm ci`
-  2. `node configure.mjs`
+  1. Install `node` (>20)
+  2. Install `ninja` (>1.11)
+  3. `npm ci`
+  4. `node configure.mjs`
 
 ### Building + linting + formatting + tests
 
