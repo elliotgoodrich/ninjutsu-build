@@ -30,8 +30,10 @@ function makeNpmCiRule(ninja) {
 }
 
 function makeNpmLinkRule(ninja) {
+  const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
   const ci = ninja.rule("npmlink", {
-    command: prefix + "npm install --prefix $cwd --silent --no-save $pkgs",
+    command:
+      prefix + "npm install --prefix $cwd --silent --no-save $pkgs && " + touch,
     description: "npm link $pkg",
   });
   return (a) => {

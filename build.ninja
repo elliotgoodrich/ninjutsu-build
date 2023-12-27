@@ -16,7 +16,7 @@ rule npmci
   command = cmd /c npm ci --prefix $cwd --silent
   description = Running npm ci in $cwd
 rule npmlink
-  command = cmd /c npm install --prefix $cwd --silent --no-save $pkgs
+  command = cmd /c npm install --prefix $cwd --silent --no-save $pkgs && type NUL > $out
   description = npm link $pkg
 rule tar
   command = tar -czf $out $args $files
