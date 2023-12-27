@@ -45,12 +45,26 @@ function compilerOptionToArray(
   }
 }
 
-function compilerOptionsToArray(
-  compilerOptions: CompilerOptions = {},
+/**
+ * Convert the TypeScript `compilerOptions` an array of strings of the equivalent command line
+ * arguments that would be passed to `tsc`.
+ */
+export function compilerOptionsToArray(
+  compilerOptions: CompilerOptions,
 ): string[] {
   return Object.entries(compilerOptions).flatMap(([name, value]) =>
     compilerOptionToArray(name, value),
   );
+}
+
+/**
+ * Convert the TypeScript `compilerOptions` to the equivalent command line arguments that
+ * would be passed to `tsc`.
+ */
+export function compilerOptionsToString(
+  compilerOptions: CompilerOptions,
+): string {
+  return compilerOptionsToArray(compilerOptions).join(" ");
 }
 
 // In order to pipe to $out we need to run with `cmd /c` on Windows.
@@ -125,7 +139,7 @@ export function makeTypeCheckRule(
     [implicitOut]?: readonly string[];
     [validations]?: (out: string) => readonly string[];
   }): O => {
-    const { compilerOptions, cwd = ".", ...rest } = a;
+    const { compilerOptions = {}, cwd = ".", ...rest } = a;
     return rule({
       ...rest,
       cwd,
@@ -231,7 +245,7 @@ export function makeTSCRule(
     [validations]?: (out: readonly string[]) => readonly string[];
   }): readonly string[] => {
     const {
-      compilerOptions,
+      compilerOptions = {},
       cwd = ".",
       [validations]: _validations,
       ...rest

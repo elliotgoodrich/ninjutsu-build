@@ -1,7 +1,61 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
 import { NinjaBuilder } from "@ninjutsu-build/core";
-import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
+import {
+  makeTSCRule,
+  makeTypeCheckRule,
+  compilerOptionsToString,
+  compilerOptionsToArray,
+} from "@ninjutsu-build/tsc";
+
+test("Serializing CompilerOptions", () => {
+  // false
+  assert.deepEqual(compilerOptionsToArray({ declaration: false }), []);
+  assert.equal(compilerOptionsToString({ declaration: false }), "");
+
+  // true
+  assert.deepEqual(compilerOptionsToArray({ declaration: true }), [
+    "--declaration",
+  ]);
+  assert.equal(compilerOptionsToString({ declaration: true }), "--declaration");
+
+  // number
+  assert.deepEqual(compilerOptionsToArray({ maxNodeModuleJsDepth: 99 }), [
+    "--maxNodeModuleJsDepth",
+    "99",
+  ]);
+  assert.equal(
+    compilerOptionsToString({ maxNodeModuleJsDept: 99 }),
+    "--maxNodeModuleJsDept 99",
+  );
+
+  // string
+  assert.deepEqual(compilerOptionsToArray({ outDir: "dist" }), [
+    "--outDir",
+    "dist",
+  ]);
+  assert.equal(compilerOptionsToString({ outDir: "dist" }), "--outDir dist");
+
+  // null/undefined
+  assert.deepEqual(compilerOptionsToArray({ outDir: undefined }), []);
+  assert.equal(compilerOptionsToString({ outDir: undefined }), "");
+
+  // array
+  assert.deepEqual(compilerOptionsToArray({ types: [] }), ["--types"]);
+  assert.deepEqual(compilerOptionsToArray({ types: ["node"] }), [
+    "--types",
+    "node",
+  ]);
+  assert.deepEqual(compilerOptionsToArray({ types: ["node", "jest"] }), [
+    "--types",
+    "node",
+    "jest",
+  ]);
+  assert.equal(
+    compilerOptionsToString({ types: ["node", "jest"] }),
+    "--types node jest",
+  );
+});
 
 test("makeTSCRule", () => {
   const ninja = new NinjaBuilder();
