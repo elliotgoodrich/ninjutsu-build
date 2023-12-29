@@ -90,7 +90,7 @@ test("makeTSCRule", () => {
 build output/index.js: tsc src/common/index.ts
   cwd = .
   args = --outDir output
-build index.cjs | index.d.cts: tsc index.cts
+build index.cjs: tsc index.cts
   cwd = .
   args = --declaration --outDir 
 `,

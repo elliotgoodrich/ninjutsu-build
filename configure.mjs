@@ -12,12 +12,13 @@ import { globSync } from "glob";
 import { platform } from "os";
 import toposort from "toposort";
 
+const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
 function makeNpmCiRule(ninja) {
   const ci = ninja.rule("npmci", {
     command: prefix + "npm ci --prefix $cwd --silent",
-    description: "Running npm ci in $cwd",
+    description: "npm ci ($cwd)",
   });
   return (a) => {
     const cwd = dirname(a.in);
@@ -30,11 +31,10 @@ function makeNpmCiRule(ninja) {
 }
 
 function makeNpmLinkRule(ninja) {
-  const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
   const ci = ninja.rule("npmlink", {
     command:
       prefix + "npm install --prefix $cwd --silent --no-save $pkgs && " + touch,
-    description: "npm link $pkg",
+    description: "npm link $pkg ($cwd)",
   });
   return (a) => {
     const cwd = dirname(a.in);
@@ -54,7 +54,7 @@ function makeTarRule(ninja) {
   // from `$in` and save as the `$files` variable.
   const tar = ninja.rule("tar", {
     command: "tar -czf $out $args $files",
-    description: "Creating $out",
+    description: "Creating archive $out",
   });
   return (a) => {
     const { dir, ...rest } = a;
@@ -74,13 +74,12 @@ function makeTarRule(ninja) {
 // `{ file: in, pretty: out }` that is designed to be passed to a rule
 // wrapped with `afterPrettier`.
 function makePrettierRule(ninja) {
-  const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
   const prettier = ninja.rule("prettier", {
     command:
       prefix +
       "npm exec --prefix $cwd prettier -- $in --write --log-level silent && " +
       touch,
-    description: "Running prettier on $in",
+    description: "Formatting $in",
   });
   return (a) => {
     const { [validations]: _validations = () => {}, ...rest } = a;
@@ -132,11 +131,12 @@ function makeCopyRule(ninja) {
   });
 }
 
-function formatAndLint(cwd, file) {
+function formatAndLint(cwd, file, deps) {
   return prettier({
     in: file,
     cwd,
     [validations]: (out) => afterPrettier(eslint)({ in: out, cwd }),
+    [orderOnlyDeps]: deps[orderOnlyDeps],
   });
 }
 
@@ -245,8 +245,10 @@ const allPackageFiles = pkgs.flatMap((packageName) => {
   });
 
   // Run prettier over `file` and then run `eslint` as a validation step with a
-  // order-only dependency on prettier finishing for that file
-  const format = (file) => formatAndLint(cwd, file);
+  // order-only dependency on prettier finishing for that file. Make sure that
+  // we start only after eslint/prettier have been installed.
+  const format = (file) =>
+    formatAndLint(cwd, file, { [orderOnlyDeps]: [dependenciesInstalled] });
 
   // Grab all TypeScript source files and run prettier over them
   const ts = globSync(join(cwd, "src", "*.*"), { posix: true }).map(format);
@@ -315,9 +317,16 @@ ninja.comment("Tests");
     in: packageJSON,
   });
 
+  const linked = afterPrettier(link)({
+    in: packageJSON,
+    pkgs: pkgs.map((name) => `.builddir/${name}/package`).join(" "),
+    [implicitDeps]: allPackageFiles,
+    [orderOnlyDeps]: [dependenciesInstalled],
+  });
+
   // Grab all TypeScript source files and run prettier over them
   const tests = globSync("tests/src/*.*", { posix: true }).map((file) =>
-    formatAndLint(cwd, file),
+    formatAndLint(cwd, file, { [orderOnlyDeps]: [dependenciesInstalled] }),
   );
 
   // Transpile the TypeScript into JavaScript once prettier has finished, do this
@@ -336,7 +345,7 @@ ninja.comment("Tests");
       // not yet use `dyndeps` to describe what files it creates in `node_modules`. When
       // we do generate this we can use `orderOnlyDeps` instead.
       // Also we can change this to only TypeScript declaration files.
-      [implicitDeps]: allPackageFiles.concat(dependenciesInstalled),
+      [implicitDeps]: [linked],
     });
     node({
       in: js,
