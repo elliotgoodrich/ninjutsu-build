@@ -263,7 +263,6 @@ export function makeTSCRule(
       )
       .map((p) => join(cwd, escapePath(p)).replaceAll("\\", "/"));
     const [first, ...others] = out;
-    /* eslint-disable @typescript-eslint/no-unused-vars */
     tsc({
       ...rest,
       out: first,
@@ -273,7 +272,8 @@ export function makeTSCRule(
       [validations]:
         _validations === undefined
           ? undefined
-          : (_: string) => _validations(out),
+          : // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            (_: string) => _validations(out),
     });
     return out;
   };
