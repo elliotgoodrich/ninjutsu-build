@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "main": "dist",
+  "main": "dist/tsc.js",
   "keywords": [
     "ninjutsu",
     "ninjutsu-build",
