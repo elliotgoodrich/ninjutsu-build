@@ -5,9 +5,9 @@
   "author": "Elliot Goodrich",
   "license": "MIT",
   "devDependencies": {
-    "@ninjutsu-build/core": "file:.builddir/core/package",
-    "@ninjutsu-build/node": "file:.builddir/node/package",
-    "@ninjutsu-build/tsc": "file:.builddir/tsc/package",
+    "@ninjutsu-build/core": "file:../.builddir/ninjutsu-build-core.tgz",
+    "@ninjutsu-build/node": "file:../.builddir/ninjutsu-build-node.tgz",
+    "@ninjutsu-build/tsc": "file:../.builddir/ninjutsu-build-tsc.tgz",
     "@types/node": "^20.10.5",
     "tsafe": "^1.6.5",
     "typescript": "^5.2.2"

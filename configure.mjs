@@ -34,14 +34,17 @@ function makeNpmLinkRule(ninja) {
   const ci = ninja.rule("npmlink", {
     command:
       prefix + "npm install --prefix $cwd --silent --no-save $pkgs && " + touch,
-    description: "npm link $pkg ($cwd)",
+    description: "npm link $pkgs ($cwd)",
   });
   return (a) => {
     const cwd = dirname(a.in);
+    const pkgs = a.pkgs;
+    const deps = a[implicitDeps] ?? [];
     return ci({
       ...a,
       out: `$builddir/.ninjutsu-build/npmlink/${a.in}`,
       cwd,
+      [implicitDeps]: deps.concat(pkgs),
     });
   };
 }
@@ -77,7 +80,7 @@ function makePrettierRule(ninja) {
   const prettier = ninja.rule("prettier", {
     command:
       prefix +
-      "npm exec --prefix $cwd prettier -- $in --write --log-level silent && " +
+      "npm exec --offline --prefix $cwd prettier -- $in --write --log-level silent && " +
       touch,
     description: "Formatting $in",
   });
@@ -114,7 +117,7 @@ function afterPrettier(rule) {
 
 function makeESLintRule(ninja) {
   const eslint = ninja.rule("eslint", {
-    command: prefix + "npm exec --prefix $cwd eslint -- $in > $out",
+    command: prefix + "npm exec --offline --prefix $cwd eslint -- $in > $out",
     description: "Linting $in",
   });
   return (a) =>
@@ -195,110 +198,108 @@ const copy = makeCopyRule(ninja);
   afterPrettier(ci)({ in: packageJSON });
 }
 
-// Figure out the dependency graph
-const scope = "@ninjutsu-build/";
-const graph = {};
-const pkgs = toposort(
-  globSync("*", { posix: true, cwd: "packages" }).flatMap((packageName) => {
-    const packageJSON = JSON.parse(
-      readFileSync(join("packages", packageName, "package.json")).toString(),
-    );
-    const deps = {
-      ...packageJSON.dependencies,
-      ...packageJSON.devDependencies,
-      ...packageJSON.peerDependencies,
-    };
-    graph[packageName] = Object.keys(deps)
-      .filter((dep) => dep.startsWith(scope))
-      .map((dep) => dep.substring(scope.length));
-    return graph[packageName].map((dep) => [packageName, dep]);
-  }),
-).reverse();
+// Return an array of all tgz files for our packages
+const tars = (() => {
+  const scope = "@ninjutsu-build/";
+  const graph = {};
+  return toposort(
+    globSync("*", { posix: true, cwd: "packages" }).flatMap((packageName) => {
+      const packageJSON = JSON.parse(
+        readFileSync(join("packages", packageName, "package.json")).toString(),
+      );
+      const deps = {
+        ...packageJSON.dependencies,
+        ...packageJSON.devDependencies,
+        ...packageJSON.peerDependencies,
+      };
+      graph[packageName] = Object.keys(deps)
+        .filter((dep) => dep.startsWith(scope))
+        .map((dep) => dep.substring(scope.length));
+      return graph[packageName].map((dep) => [packageName, dep]);
+    }),
+  )
+    .reverse()
+    .reduce((packages, packageName) => {
+      // Collect all the generated JavaScript tgz packages
+      // Go through all of the packages
+      ninja.output += "\n";
 
-const pkgContents = {};
+      const cwd = join("packages", packageName);
+      ninja.comment(cwd);
 
-// Collect all the generated JavaScript tgz packages
-// Go through all of the packages
-const allPackageFiles = pkgs.flatMap((packageName) => {
-  ninja.output += "\n";
+      // Run prettier over package.json
+      const packageJSON = prettier({ in: join(cwd, "package.json"), cwd });
 
-  const cwd = join("packages", packageName);
-  ninja.comment(cwd);
+      // Run `npm ci`
+      const dependenciesInstalled = afterPrettier(ci)({
+        in: packageJSON,
+      });
 
-  // Run prettier over package.json
-  const packageJSON = prettier({ in: join(cwd, "package.json"), cwd });
+      // If `packageJSON` is changed (and only after we have run `npm ci`)
+      // install our packages locally
+      const linked = afterPrettier(link)({
+        in: packageJSON,
+        pkgs: graph[packageName].map((name) => packages[name]).join(" "),
+        [orderOnlyDeps]: [dependenciesInstalled],
+      });
 
-  // Run `npm ci`
-  const dependenciesInstalled = afterPrettier(ci)({
-    in: packageJSON,
-  });
+      // Run prettier over `file` and then run `eslint` as a validation step with a
+      // order-only dependency on prettier finishing for that file. Make sure that
+      // we start only after eslint/prettier have been installed.
+      const format = (file) =>
+        formatAndLint(cwd, file, {
+          [orderOnlyDeps]: [dependenciesInstalled],
+        });
 
-  // If `packageJSON` is changed (and only after we have run `npm ci`)
-  // install our packages locally
-  const linked = afterPrettier(link)({
-    in: packageJSON,
-    pkgs: graph[packageName]
-      .map((name) => `.builddir/${name}/package`)
-      .join(" "),
-    [implicitDeps]: graph[packageName].flatMap((pkg) => pkgContents[pkg]),
-    [orderOnlyDeps]: [dependenciesInstalled],
-  });
+      // Grab all TypeScript source files and run prettier over them
+      const ts = globSync(join(cwd, "src", "*.*"), { posix: true }).map(format);
 
-  // Run prettier over `file` and then run `eslint` as a validation step with a
-  // order-only dependency on prettier finishing for that file. Make sure that
-  // we start only after eslint/prettier have been installed.
-  const format = (file) =>
-    formatAndLint(cwd, file, { [orderOnlyDeps]: [dependenciesInstalled] });
+      // In the `lib` directory we have JavaScript files and TS declaration files
+      const lib = globSync(join(cwd, "lib", "*.*"), {
+        posix: true,
+      }).map(format);
 
-  // Grab all TypeScript source files and run prettier over them
-  const ts = globSync(join(cwd, "src", "*.*"), { posix: true }).map(format);
+      // Transpile the TypeScript into JavaScript once prettier has finished
+      const dist = afterPrettier(tsc)({
+        in: ts,
+        compilerOptions,
+        cwd,
+        // We must use `implicitDeps` instead of `orderOnlyDeps` as the `npmci` and
+        // `npmlink` rules do not yet use `dyndeps` to describe what files they
+        // creates in `node_modules`
+        [implicitDeps]: [linked],
+      });
 
-  // In the `lib` directory we have JavaScript files and TS declaration files
-  const lib = globSync(join(cwd, "lib", "*.*"), {
-    posix: true,
-  }).map(format);
+      // Prepare our files to create a tgz of our package, include
+      //   - README.md
+      //   - package.json
+      //   - contents of `lib`
+      //   - contents of `dist`
+      const stageForTar = (args) => {
+        const { in: _in, ...rest } = args;
+        return copy({
+          in: _in,
+          out: `$builddir/${packageName}/${relative(cwd, _in)}`,
+          ...rest,
+        });
+      };
+      let toPack = [];
+      toPack.push(stageForTar({ in: join(cwd, "README.md") }));
+      toPack.push(afterPrettier(stageForTar)({ in: packageJSON }));
+      toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
+      toPack = toPack.concat(
+        lib.map((file) => afterPrettier(stageForTar)({ in: file })),
+      );
 
-  // Transpile the TypeScript into JavaScript once prettier has finished
-  const dist = afterPrettier(tsc)({
-    in: ts,
-    compilerOptions,
-    cwd,
-    // We must use `implicitDeps` instead of `orderOnlyDeps` as the `npmci` and
-    // `npmlink` rules do not yet use `dyndeps` to describe what files they
-    // creates in `node_modules`
-    [implicitDeps]: [linked],
-  });
-
-  // Prepare our files to create a tgz of our package, include
-  //   - README.md
-  //   - package.json
-  //   - contents of `lib`
-  //   - contents of `dist`
-  const stageForTar = (args) => {
-    const { in: _in, ...rest } = args;
-    return copy({
-      in: _in,
-      out: `$builddir/${packageName}/package/${relative(cwd, _in)}`,
-      ...rest,
-    });
-  };
-  let toPack = [];
-  toPack.push(stageForTar({ in: join(cwd, "README.md") }));
-  toPack.push(afterPrettier(stageForTar)({ in: packageJSON }));
-  toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
-  toPack = toPack.concat(
-    lib.map((file) => afterPrettier(stageForTar)({ in: file })),
-  );
-  pkgContents[packageName] = toPack;
-
-  // Also generate the package file that we can publish
-  tar({
-    out: `$builddir/ninjutsu-build-${packageName}.tgz`,
-    in: toPack,
-    dir: `$builddir/${packageName}`,
-  });
-  return toPack;
-});
+      return Object.assign({}, packages, {
+        packageName: tar({
+          out: `$builddir/ninjutsu-build-${packageName}.tgz`,
+          in: toPack,
+          dir: "$builddir",
+        }),
+      });
+    }, {});
+})();
 
 ninja.output += "\n";
 ninja.comment("Tests");
@@ -319,8 +320,7 @@ ninja.comment("Tests");
 
   const linked = afterPrettier(link)({
     in: packageJSON,
-    pkgs: pkgs.map((name) => `.builddir/${name}/package`).join(" "),
-    [implicitDeps]: allPackageFiles,
+    pkgs: Object.values(tars).join(" "),
     [orderOnlyDeps]: [dependenciesInstalled],
   });
 
@@ -351,10 +351,6 @@ ninja.comment("Tests");
       in: js,
       out: `${js}.result.txt`,
       args: "--test",
-      // Use `implictDeps` on the generated JavaScript. When `npmci` and `npmlink` use
-      // dyndep to describe their outputs we can avoid this and use `orderOnlyDeps`.
-      // Also we can change this to only JavaScript files.
-      [implicitDeps]: allPackageFiles,
     });
   });
 }

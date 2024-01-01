@@ -1,12 +1,18 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
-import { NinjaBuilder } from "@ninjutsu-build/core";
 import {
   makeTSCRule,
   makeTypeCheckRule,
   compilerOptionsToString,
   compilerOptionsToArray,
 } from "@ninjutsu-build/tsc";
+import {
+  NinjaBuilder,
+  implicitDeps,
+  implicitOut,
+  orderOnlyDeps,
+  validations,
+} from "@ninjutsu-build/core";
 
 test("Serializing CompilerOptions", () => {
   // false
@@ -77,6 +83,10 @@ test("makeTSCRule", () => {
         declaration: true,
         outDir: "",
       },
+      [implicitDeps]: ["implicitDeps"],
+      [implicitOut]: ["implicitOut"],
+      [orderOnlyDeps]: ["orderOnlyDeps"],
+      [validations]: (out) => [out[0] + "_validation"],
     }),
     ["index.cjs", "index.d.cts"],
   );
@@ -90,7 +100,7 @@ test("makeTSCRule", () => {
 build output/index.js: tsc src/common/index.ts
   cwd = .
   args = --outDir output
-build index.cjs: tsc index.cts
+build index.cjs | index.d.cts implicitOut: tsc index.cts | implicitDeps || orderOnlyDeps |@ index.cjs_validation
   cwd = .
   args = --declaration --outDir 
 `,

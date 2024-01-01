@@ -248,6 +248,7 @@ export function makeTSCRule(
       compilerOptions = {},
       cwd = ".",
       [validations]: _validations,
+      [implicitOut]: _implicitOut = [],
       ...rest
     } = a;
     const argsArr = compilerOptionsToArray(compilerOptions);
@@ -262,18 +263,14 @@ export function makeTSCRule(
         ts.getOutputFileNames(commandLine, path, false),
       )
       .map((p) => join(cwd, escapePath(p)).replaceAll("\\", "/"));
-    const [first, ...others] = out;
     tsc({
       ...rest,
-      out: first,
+      out: out[0],
       cwd,
       args: argsArr.join(" "),
-      [implicitOut]: others,
+      [implicitOut]: out.slice(1).concat(_implicitOut),
       [validations]:
-        _validations === undefined
-          ? undefined
-          : // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            (_: string) => _validations(out),
+        _validations === undefined ? undefined : () => _validations(out),
     });
     return out;
   };
