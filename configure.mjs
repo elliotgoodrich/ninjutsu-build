@@ -120,11 +120,12 @@ function makeESLintRule(ninja) {
     command: prefix + "npm exec --offline --prefix $cwd eslint -- $in > $out",
     description: "Linting $in",
   });
-  return (a) =>
-    eslint({
+  return (a) => {
+    return eslint({
       ...a,
       out: "$builddir/.ninjutsu-build/eslint/" + a.in,
     });
+  };
 }
 
 function makeCopyRule(ninja) {
@@ -141,6 +142,18 @@ function formatAndLint(cwd, file, deps) {
     [validations]: (out) => afterPrettier(eslint)({ in: out, cwd }),
     [orderOnlyDeps]: deps[orderOnlyDeps],
   });
+}
+
+// Return a function that will append `args[orderOnlyDeps]` with the build arguments
+// before passing to `rule`.
+function inject(rule, args) {
+  return (a) => {
+    const { [orderOnlyDeps]: _implicitDeps = [], ...rest } = a;
+    return rule({
+      ...rest,
+      [orderOnlyDeps]: _implicitDeps.concat(args[orderOnlyDeps]),
+    });
+  };
 }
 
 const compilerOptions = {
@@ -176,27 +189,27 @@ const ninja = new NinjaBuilder({
 });
 
 ninja.output += "\n";
-ninja.comment("Rules");
-const tsc = makeTSCRule(ninja);
-const node = makeNodeRule(ninja);
+ninja.comment("Rules + Installation");
 const ci = makeNpmCiRule(ninja);
+const toolsInstalled = ci({ in: "package.json" });
+
 const link = makeNpmLinkRule(ninja);
+const tsc = inject(makeTSCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
+const node = makeNodeRule(ninja);
 const tar = makeTarRule(ninja);
-const prettier = makePrettierRule(ninja);
-const eslint = makeESLintRule(ninja);
+const prettier = inject(makePrettierRule(ninja), {
+  [orderOnlyDeps]: toolsInstalled,
+});
+const eslint = inject(makeESLintRule(ninja), {
+  [orderOnlyDeps]: toolsInstalled,
+});
 const copy = makeCopyRule(ninja);
 
-{
-  ninja.output += "\n";
-  ninja.comment("Configuration");
+// TODO: Add a validation that `package.json` is formatted correctly.
+// We need to format after running `npmci` but then formatting the
+// file will cause us to rerun `npmci` again
 
-  // Run prettier over package.json
-  const packageJSON = prettier({ in: "package.json", cwd: "." });
-  prettier({ in: "configure.mjs", cwd: "." });
-
-  // Run `npm ci`
-  afterPrettier(ci)({ in: packageJSON });
-}
+prettier({ in: "configure.mjs", cwd: "." });
 
 // Return an array of all tgz files for our packages
 const tars = (() => {
