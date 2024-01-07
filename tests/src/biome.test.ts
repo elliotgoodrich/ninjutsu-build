@@ -1,10 +1,7 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
 import { makeLintRule, makeFormatRule } from "@ninjutsu-build/biome";
-import {
-  NinjaBuilder,
-  orderOnlyDeps,
-} from "@ninjutsu-build/core";
+import { NinjaBuilder, orderOnlyDeps } from "@ninjutsu-build/core";
 
 test("makeLintRule", () => {
   const ninja = new NinjaBuilder();

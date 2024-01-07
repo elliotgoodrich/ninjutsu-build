@@ -1,6 +1,7 @@
 # biome - Ninjutsu Build
 
-A package to create a `ninjutsu-build` rule for linting and formatting files With [Biome](https://biome.dev/).
+A package to create a `ninjutsu-build` rule for linting and formatting files With
+[Biome](https://biomejs.dev/).
 
 ## Installation
 
@@ -18,7 +19,7 @@ runs those tests with node's test runner, while linting those JavaScript files
 in parallel.
 
 ```ts
-import { NinjaBuilder, [implicitDeps] } from "@ninjutsu-build/core";
+import { NinjaBuilder, validations, orderOnlyDeps } from "@ninjutsu-build/core";
 import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
 import { makeNodeRule } from "@ninjutsu-build/node";
 import { writeFileSync } from "fs";
@@ -49,7 +50,7 @@ globSync("tests/*.test.js", { posix: true }).forEach((js) => {
     [orderOnlyDeps]: formatted[orderOnlyDeps],
     [validations]: (file) => lint({ in: file, configPath: biomeConfig }),
   })
-}));
+});
 
 // Write the ninja file to disk
 writeFileSync("build.ninja", ninja.output);
