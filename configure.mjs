@@ -43,6 +43,7 @@ function makeNpmLinkRule(ninja) {
     return ci({
       ...a,
       out: `$builddir/.ninjutsu-build/npmlink/${a.in}`,
+      pkgs: pkgs.join(" "),
       cwd,
       [implicitDeps]: deps.concat(pkgs),
     });
@@ -252,7 +253,7 @@ const tars = (() => {
       // install our packages locally
       const linked = afterPrettier(link)({
         in: packageJSON,
-        pkgs: graph[packageName].map((name) => packages[name]).join(" "),
+        pkgs: graph[packageName].map((name) => packages[name]),
         [orderOnlyDeps]: [dependenciesInstalled],
       });
 
@@ -305,7 +306,7 @@ const tars = (() => {
       );
 
       return Object.assign({}, packages, {
-        packageName: tar({
+        [packageName]: tar({
           out: `$builddir/ninjutsu-build-${packageName}.tgz`,
           in: toPack,
           dir: "$builddir",
@@ -333,7 +334,7 @@ ninja.comment("Tests");
 
   const linked = afterPrettier(link)({
     in: packageJSON,
-    pkgs: Object.values(tars).join(" "),
+    pkgs: Object.values(tars),
     [orderOnlyDeps]: [dependenciesInstalled],
   });
 
