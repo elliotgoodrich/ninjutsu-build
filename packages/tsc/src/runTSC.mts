@@ -50,7 +50,7 @@ function parseArgs(args: readonly string[]): {
       }
     }
   }
-  if ((depfile === undefined) != (out === undefined)) {
+  if ((depfile === undefined) !== (out === undefined)) {
     throw new Error(
       "Either both --depfile and --out are specified, or neither are!",
     );
@@ -74,22 +74,22 @@ try {
     const scriptCwd = resolve();
     let deps = out + ":";
     const makeRelative = (path: string) => {
-      if (isAbsolute(path)) {
-        // Absolute paths are most likely references to things inside `node_modules`,
-        // but could be absolute paths given by the user to something else.  If the
-        // path is within the current working directory, replace with the relative
-        // path, otherwise keep it as absolute.
-        const relativeAttempt = relative(scriptCwd, path);
-        return relativeAttempt &&
-          !relativeAttempt.startsWith("..") &&
-          !isAbsolute(relativeAttempt)
-          ? relativeAttempt
-          : path;
-      } else {
+      if (!isAbsolute(path)) {
         // Relative paths at this point are within the project, they need to be
         // adjusted to add back the `cwd` prefix that we removed on the inputs
         return join(cwd ?? "", path);
       }
+
+      // Absolute paths are most likely references to things inside `node_modules`,
+      // but could be absolute paths given by the user to something else.  If the
+      // path is within the current working directory, replace with the relative
+      // path, otherwise keep it as absolute.
+      const relativeAttempt = relative(scriptCwd, path);
+      return relativeAttempt &&
+        !relativeAttempt.startsWith("..") &&
+        !isAbsolute(relativeAttempt)
+        ? relativeAttempt
+        : path;
     };
     for (const line of lines) {
       deps += " " + makeRelative(line).replaceAll("\\", "/").trim();

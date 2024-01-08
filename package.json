@@ -8,6 +8,8 @@
   "author": "Elliot Goodrich",
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "^1.4.1",
+    "@ninjutsu-build/biome": "^0.3.0",
     "@ninjutsu-build/core": "^0.5.1",
     "@ninjutsu-build/node": "^0.5.0",
     "@ninjutsu-build/tsc": "^0.5.0",

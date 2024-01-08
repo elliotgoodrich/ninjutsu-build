@@ -25,11 +25,7 @@ function compilerOptionToArray(
     case "number":
       return [`--${name}`, `${value}`];
     case "boolean":
-      if (value) {
-        return [`--${name}`];
-      } else {
-        return [];
-      }
+      return value ? [`--${name}`] : [];
     case "object":
       if (value === null) {
         return [];

@@ -6,6 +6,7 @@ import {
 } from "@ninjutsu-build/core";
 import { makeTSCRule } from "@ninjutsu-build/tsc";
 import { makeNodeRule } from "@ninjutsu-build/node";
+import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
 import { dirname, relative, join } from "node:path/posix";
 import { readFileSync, writeFileSync } from "node:fs";
 import { globSync } from "glob";
@@ -75,8 +76,8 @@ function makeTarRule(ninja) {
 // while creating an empty `out` file to timestamp when it was run.
 // In order to chain this up with other rules, we need to make sure that
 // the stamp file is added to the orderOnlyDeps.  Return the object
-// `{ file: in, pretty: out }` that is designed to be passed to a rule
-// wrapped with `afterPrettier`.
+// `{ file: in, [orderOnlyDeps]: out }` that is designed to be passed to a rule
+// wrapped with `afterFormat`.
 function makePrettierRule(ninja) {
   const prettier = ninja.rule("prettier", {
     command:
@@ -89,42 +90,30 @@ function makePrettierRule(ninja) {
     const { [validations]: _validations = () => {}, ...rest } = a;
     const result = {
       file: a.in,
-      pretty: "$builddir/.ninjutsu-build/prettier/" + a.in,
+      [orderOnlyDeps]: "$builddir/.ninjutsu-build/prettier/" + a.in,
     };
     prettier({
       ...rest,
-      out: result.pretty,
+      out: result[orderOnlyDeps],
       [validations]: (out) => _validations(result),
     });
     return result;
   };
 }
 
-// Wrap the `rule` so that it accepts `{ file: string, pretty: string }` (or an array)
-// containing those objects, forwarding on `file` to `in`, and adding `pretty` to
-// [orderOnlyDeps]
-function afterPrettier(rule) {
+// Wrap the `rule` so that it accepts `{ file: string, [orderOnlyDeps]: string }` (or an array)
+// containing those objects, forwarding on `file` to `in`, and combining the `[orderOnlyDeps]`.
+function afterFormat(rule) {
   return (a) => {
     const { in: _in, [orderOnlyDeps]: _orderOnlyDeps = [], ...rest } = a;
     return rule({
       in: Array.isArray(_in) ? _in.map(({ file }) => file) : _in.file,
       [orderOnlyDeps]: _orderOnlyDeps.concat(
-        Array.isArray(_in) ? _in.map(({ pretty }) => pretty) : _in.pretty,
+        Array.isArray(_in)
+          ? _in.map(({ [orderOnlyDeps]: deps }) => deps)
+          : _in[orderOnlyDeps],
       ),
       ...rest,
-    });
-  };
-}
-
-function makeESLintRule(ninja) {
-  const eslint = ninja.rule("eslint", {
-    command: prefix + "npm exec --offline --prefix $cwd eslint -- $in > $out",
-    description: "Linting $in",
-  });
-  return (a) => {
-    return eslint({
-      ...a,
-      out: "$builddir/.ninjutsu-build/eslint/" + a.in,
     });
   };
 }
@@ -137,10 +126,10 @@ function makeCopyRule(ninja) {
 }
 
 function formatAndLint(cwd, file, deps) {
-  return prettier({
+  return format({
     in: file,
     cwd,
-    [validations]: (out) => afterPrettier(eslint)({ in: out, cwd }),
+    [validations]: (out) => afterFormat(lint)({ in: out, cwd }),
     [orderOnlyDeps]: deps[orderOnlyDeps],
   });
 }
@@ -149,10 +138,19 @@ function formatAndLint(cwd, file, deps) {
 // before passing to `rule`.
 function inject(rule, args) {
   return (a) => {
-    const { [orderOnlyDeps]: _implicitDeps = [], ...rest } = a;
+    const { [orderOnlyDeps]: _orderOnlyDeps = [], ...rest } = a;
     return rule({
       ...rest,
-      [orderOnlyDeps]: _implicitDeps.concat(args[orderOnlyDeps]),
+      [orderOnlyDeps]: _orderOnlyDeps.concat(args[orderOnlyDeps]),
+    });
+  };
+}
+
+function addBiomeConfig(rule, configPath) {
+  return (a) => {
+    return rule({
+      ...a,
+      configPath,
     });
   };
 }
@@ -201,16 +199,25 @@ const tar = makeTarRule(ninja);
 const prettier = inject(makePrettierRule(ninja), {
   [orderOnlyDeps]: toolsInstalled,
 });
-const eslint = inject(makeESLintRule(ninja), {
-  [orderOnlyDeps]: toolsInstalled,
-});
+const format = addBiomeConfig(
+  inject(makeFormatRule(ninja), {
+    [orderOnlyDeps]: toolsInstalled,
+  }),
+  "./biome.json",
+);
+const lint = addBiomeConfig(
+  inject(makeLintRule(ninja), {
+    [orderOnlyDeps]: toolsInstalled,
+  }),
+  "./biome.json",
+);
 const copy = makeCopyRule(ninja);
 
 // TODO: Add a validation that `package.json` is formatted correctly.
 // We need to format after running `npmci` but then formatting the
 // file will cause us to rerun `npmci` again
 
-prettier({ in: "configure.mjs", cwd: "." });
+format({ in: "configure.mjs", cwd: "." });
 
 // Return an array of all tgz files for our packages
 const tars = (() => {
@@ -245,21 +252,21 @@ const tars = (() => {
       const packageJSON = prettier({ in: join(cwd, "package.json"), cwd });
 
       // Run `npm ci`
-      const dependenciesInstalled = afterPrettier(ci)({
+      const dependenciesInstalled = afterFormat(ci)({
         in: packageJSON,
       });
 
       // If `packageJSON` is changed (and only after we have run `npm ci`)
       // install our packages locally
-      const linked = afterPrettier(link)({
+      const linked = afterFormat(link)({
         in: packageJSON,
         pkgs: graph[packageName].map((name) => packages[name]),
         [orderOnlyDeps]: [dependenciesInstalled],
       });
 
-      // Run prettier over `file` and then run `eslint` as a validation step with a
+      // Run prettier over `file` and then run `lint` as a validation step with a
       // order-only dependency on prettier finishing for that file. Make sure that
-      // we start only after eslint/prettier have been installed.
+      // we start only after lint/biome have been installed.
       const format = (file) =>
         formatAndLint(cwd, file, {
           [orderOnlyDeps]: [dependenciesInstalled],
@@ -274,7 +281,7 @@ const tars = (() => {
       }).map(format);
 
       // Transpile the TypeScript into JavaScript once prettier has finished
-      const dist = afterPrettier(tsc)({
+      const dist = afterFormat(tsc)({
         in: ts,
         compilerOptions,
         cwd,
@@ -299,10 +306,10 @@ const tars = (() => {
       };
       let toPack = [];
       toPack.push(stageForTar({ in: join(cwd, "README.md") }));
-      toPack.push(afterPrettier(stageForTar)({ in: packageJSON }));
+      toPack.push(afterFormat(stageForTar)({ in: packageJSON }));
       toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
       toPack = toPack.concat(
-        lib.map((file) => afterPrettier(stageForTar)({ in: file })),
+        lib.map((file) => afterFormat(stageForTar)({ in: file })),
       );
 
       return Object.assign({}, packages, {
@@ -328,11 +335,11 @@ ninja.comment("Tests");
   });
 
   // Run `npm ci`
-  const dependenciesInstalled = afterPrettier(ci)({
+  const dependenciesInstalled = afterFormat(ci)({
     in: packageJSON,
   });
 
-  const linked = afterPrettier(link)({
+  const linked = afterFormat(link)({
     in: packageJSON,
     pkgs: Object.values(tars),
     [orderOnlyDeps]: [dependenciesInstalled],
@@ -350,7 +357,7 @@ ninja.comment("Tests");
   // in parallel on the same project.
   const pool = ninja.pool("compiletests", { depth: 1 });
   tests.forEach((test) => {
-    const [js] = afterPrettier(tsc)({
+    const [js] = afterFormat(tsc)({
       in: [test],
       compilerOptions: { ...compilerOptions, declaration: false },
       cwd,

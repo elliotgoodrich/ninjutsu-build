@@ -9,7 +9,7 @@ Module.prototype.require = function (id) {
   const paths = require.resolve.paths(id);
   // If `paths` is null then this is a core module (e.g. http or fs)
   if (paths !== null) {
-    let _prepareStackTrace = Error.prepareStackTrace;
+    const _prepareStackTrace = Error.prepareStackTrace;
     try {
       Error.prepareStackTrace = (_, stack) => stack;
       const err = new Error();
