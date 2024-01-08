@@ -7,6 +7,7 @@ import {
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
 import { join } from "node:path";
+import { dirname } from "node:path/posix";
 import { platform, arch } from "os";
 
 const exe = platform() === "win32" ? ".exe" : "";
@@ -15,7 +16,7 @@ const prefix = platform() === "win32" ? "cmd /c " : "";
 // Don't use `npx biome format` as this requires a node process and
 // the overhead is so much greater than running the biome executable.
 const biomeCommand = join(
-  "@biome",
+  "@biomejs",
   `cli-${platform()}-${arch()}`,
   `biome${exe}`,
 );
@@ -83,7 +84,7 @@ export function makeFormatRule(
     command:
       prefix +
       join("node_modules", biomeCommand) +
-      " format --write $in > $out",
+      " format $args --config-path $configPath --write $in > $out",
     description: "Formatting $in",
     in: needs<string>(),
     out: needs<string>(),
@@ -109,6 +110,7 @@ export function makeFormatRule(
     const {
       [implicitDeps]: _implicitDeps = [],
       [validations]: _validations,
+      configPath,
       ...rest
     } = a;
     const result = {
@@ -124,6 +126,7 @@ export function makeFormatRule(
     format({
       out: result[orderOnlyDeps],
       ...rest,
+      configPath: dirname(configPath),
       [implicitDeps]: _implicitDeps.concat(a.configPath),
       ...validation,
     });
@@ -222,9 +225,10 @@ export function makeLintRule(
     [implicitOut]?: readonly string[];
     [validations]?: (out: string) => readonly string[];
   }): `$builddir/.ninjutsu-build/biome/lint/${I}` => {
-    const { [implicitDeps]: _implicitDeps = [], ...rest } = a;
+    const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
     return lint({
       out: `$builddir/.ninjutsu-build/biome/lint/${a.in}`,
+      configPath: dirname(configPath),
       ...rest,
       [implicitDeps]: _implicitDeps.concat(a.configPath),
     });
