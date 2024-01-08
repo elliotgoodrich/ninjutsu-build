@@ -61,7 +61,9 @@ function parseArgs(args: readonly string[]): {
 try {
   const { depfile, touch, out, cwd, tsArgs, input } = parseArgs(argv);
   if (depfile !== undefined) {
-    const tsc = execSync("npx which tsc", { cwd }).toString().trim();
+    const tsc = execSync("npm exec which --offline -- tsc", { cwd })
+      .toString()
+      .trim();
     const files =
       cwd !== undefined
         ? input.map((i) => relative(cwd, i).replaceAll("\\", "/"))
