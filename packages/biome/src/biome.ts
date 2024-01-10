@@ -1,6 +1,8 @@
 import {
-  NinjaBuilder,
+  type NinjaBuilder,
+  type Input,
   needs,
+  getInput,
   implicitDeps,
   implicitOut,
   validations,
@@ -53,9 +55,8 @@ const biomeCommand = join(
  *     args: "--no-errors-on-unmatched",
  *   });
  *   node({
- *     in: formatted.file,
+ *     in: formatted,
  *     args: "--test",
- *     [orderOnlyDeps]: formatted[orderOnlyDeps],
  *   })
  * });
  *
@@ -66,7 +67,7 @@ export function makeFormatRule(
   ninja: NinjaBuilder,
   name = "format",
 ): <I extends string>(args: {
-  in: I;
+  in: Input<I>;
   configPath: string;
   args?: string;
   [implicitDeps]?: readonly string[];
@@ -86,13 +87,13 @@ export function makeFormatRule(
       join("node_modules", biomeCommand) +
       " format $args --config-path $configPath --write $in > $out",
     description: "Formatting $in",
-    in: needs<string>(),
+    in: needs<Input<string>>(),
     out: needs<string>(),
     configPath: needs<string>(),
     args: "",
   });
   return <I extends string>(a: {
-    in: I;
+    in: Input<I>;
     configPath: string;
     args?: string;
     [implicitDeps]?: readonly string[];
@@ -104,7 +105,6 @@ export function makeFormatRule(
     }) => readonly string[];
   }): {
     file: I;
-
     [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${I}`;
   } => {
     const {
@@ -113,9 +113,10 @@ export function makeFormatRule(
       configPath,
       ...rest
     } = a;
+    const input = getInput(a);
     const result = {
-      file: a.in,
-      [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${a.in}`,
+      file: input,
+      [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${input}`,
     } as const;
     const validation =
       _validations === undefined
@@ -197,40 +198,70 @@ export function makeLintRule(
   ninja: NinjaBuilder,
   name = "lint",
 ): <I extends string>(args: {
-  in: I;
+  in: Input<I>;
   configPath: string;
   args?: string;
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
-  [validations]?: (out: string) => readonly string[];
-}) => `$builddir/.ninjutsu-build/biome/lint/${I}` {
+  [validations]?: (out: {
+    file: string;
+    [orderOnlyDeps]: string;
+  }) => readonly string[];
+}) => {
+  file: I;
+  [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
+} {
   const lint = ninja.rule(name, {
     command:
       prefix +
       join("node_modules", biomeCommand) +
       " lint $args --config-path $configPath $in > $out",
     description: "Formatting $in",
-    in: needs<string>(),
+    in: needs<Input<string>>(),
     out: needs<string>(),
     configPath: needs<string>(),
     args: "",
   });
   return <I extends string>(a: {
-    in: I;
+    in: Input<I>;
     configPath: string;
     args?: string;
     [implicitDeps]?: readonly string[];
     [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
-    [validations]?: (out: string) => readonly string[];
-  }): `$builddir/.ninjutsu-build/biome/lint/${I}` => {
-    const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
-    return lint({
-      out: `$builddir/.ninjutsu-build/biome/lint/${a.in}`,
+    [validations]?: (out: {
+      file: string;
+      [orderOnlyDeps]: string;
+    }) => readonly string[];
+  }): {
+    file: I;
+    [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
+  } => {
+    const {
+      configPath,
+      [implicitDeps]: _implicitDeps = [],
+      [validations]: _validations,
+      ...rest
+    } = a;
+    const input = getInput(a);
+    const result = {
+      file: input,
+      [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/lint/${input}`,
+    } as const;
+    const validation =
+      _validations === undefined
+        ? undefined
+        : {
+            [validations]: () => _validations(result),
+          };
+    lint({
+      out: result[orderOnlyDeps],
       configPath: dirname(configPath),
       ...rest,
       [implicitDeps]: _implicitDeps.concat(a.configPath),
+      ...validation,
     });
+    return result;
   };
 }

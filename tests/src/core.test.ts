@@ -4,6 +4,7 @@ import { strict as assert } from "node:assert";
 import type { Equals } from "tsafe";
 import {
   NinjaBuilder,
+  Input,
   Variable,
   console,
   needs,
@@ -96,7 +97,7 @@ test("touch rule", () => {
   });
   const out: "out.txt" = touch({
     out: "out.txt",
-    extra: 123,
+    extra: 321,
     stillIgnored: undefined,
   });
   assert.equal(out, "out.txt");
@@ -106,7 +107,7 @@ test("touch rule", () => {
   command = touch $out
   description = Touching $out
 build out.txt: touch
-  extra = 123
+  extra = 321
 `,
   );
 });
@@ -132,7 +133,7 @@ test("basic copy rule", () => {
   const ninja = new NinjaBuilder();
   const copy = ninja.rule("cp", {
     out: needs<string>(),
-    in: needs<string>(),
+    in: needs<Input<string>>(),
     command: "cp $in $out",
     description: "Copying $in to $out",
   });
@@ -161,7 +162,7 @@ test("Rules with different in/out arities", () => {
     const ninja = new NinjaBuilder();
     const inOneOutMany = ninja.rule("test", {
       out: needs<readonly string[]>(),
-      in: needs<string>(),
+      in: needs<Input<string>>(),
       command: "in-1-out-many",
     });
     const out: readonly ["b", "c"] = inOneOutMany({ out: ["b", "c"], in: "a" });
@@ -179,7 +180,7 @@ build b c: test a
     const ninja = new NinjaBuilder();
     const inManyOutOne = ninja.rule("test", {
       out: needs<string>(),
-      in: needs<readonly string[]>(),
+      in: needs<Input<readonly string[]>>(),
       command: "in-many-out-1",
     });
     const out: "c" = inManyOutOne({ out: "c", in: ["a", "b"] });
@@ -237,7 +238,7 @@ test("Passing all arguments to a `NinjaRule`", () => {
   const ninja = new NinjaBuilder();
   const all = ninja.rule("all", {
     out: needs<string>(),
-    in: needs<string>(),
+    in: needs<Input<string>>(),
     command: "[command]",
     description: "[desc]",
   });
@@ -254,6 +255,16 @@ test("Passing all arguments to a `NinjaRule`", () => {
     pool: "pool",
     extra: 123,
   });
+  all({
+    out: "foo",
+    in: {
+      file: "hi",
+      [implicitDeps]: "implicit1",
+      [orderOnlyDeps]: "ordered1",
+    },
+    [implicitDeps]: "implicit2",
+    [orderOnlyDeps]: ["ordered2", "ordered3"],
+  });
   assert.equal(out, "out.txt");
   assert.equal(
     ninja.output,
@@ -266,6 +277,7 @@ build out.txt | implicitOut_: all in.txt | implicitDeps_ || orderOnlyDeps_ |@ va
   description = description_
   pool = pool
   extra = 123
+build foo: all hi | implicit1 implicit2 || ordered1 ordered2 ordered3
 `,
   );
 });

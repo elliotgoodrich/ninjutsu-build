@@ -1,5 +1,6 @@
 import {
   type NinjaBuilder,
+  type Input,
   needs,
   implicitDeps,
   implicitOut,
@@ -51,7 +52,7 @@ export function makeNodeRule(
   ninja: NinjaBuilder,
   name = "node",
 ): <O extends string>(a: {
-  in: string;
+  in: Input<string>;
   out: O;
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
@@ -62,7 +63,7 @@ export function makeNodeRule(
     command,
     description: "Creating $out from 'node $in'",
     out: needs<string>(),
-    in: needs<string>(),
+    in: needs<Input<string>>(),
     depfile: "$out.depfile",
     deps: "gcc",
     args: "",

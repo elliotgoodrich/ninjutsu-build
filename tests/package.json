@@ -5,10 +5,10 @@
   "author": "Elliot Goodrich",
   "license": "MIT",
   "devDependencies": {
-    "@ninjutsu-build/biome": "file:../.builddir/ninjutsu-build-biome.tgz",
-    "@ninjutsu-build/core": "file:../.builddir/ninjutsu-build-core.tgz",
-    "@ninjutsu-build/node": "file:../.builddir/ninjutsu-build-node.tgz",
-    "@ninjutsu-build/tsc": "file:../.builddir/ninjutsu-build-tsc.tgz",
+    "@ninjutsu-build/biome": "^0.4.0",
+    "@ninjutsu-build/core": "^0.6.0",
+    "@ninjutsu-build/node": "^0.6.0",
+    "@ninjutsu-build/tsc": "^0.6.0",
     "@types/node": "^20.10.5",
     "tsafe": "^1.6.5",
     "typescript": "^5.2.2"

@@ -1,5 +1,7 @@
 import {
   type NinjaBuilder,
+  type Input,
+  getInput,
   escapePath,
   needs,
   implicitDeps,
@@ -104,7 +106,7 @@ export function makeTypeCheckRule(
   ninja: NinjaBuilder,
   name = "typecheck",
 ): <O extends string>(a: {
-  in: readonly string[];
+  in: Input<readonly string[]>;
   out: O;
   compilerOptions?: CompilerOptions;
   cwd?: string;
@@ -118,7 +120,7 @@ export function makeTypeCheckRule(
       prefix +
       "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFilesOnly $args $in",
     description: "Typechecking $in",
-    in: needs<readonly string[]>(),
+    in: needs<Input<readonly string[]>>(),
     out: needs<string>(),
     depfile: "$out.depfile",
     deps: "gcc",
@@ -126,7 +128,7 @@ export function makeTypeCheckRule(
     cwd: needs<string>(),
   });
   return <O extends string>(a: {
-    in: readonly string[];
+    in: Input<readonly string[]>;
     out: O;
     compilerOptions?: CompilerOptions;
     cwd?: string;
@@ -211,7 +213,7 @@ export function makeTSCRule(
   ninja: NinjaBuilder,
   name = "tsc",
 ): (a: {
-  in: readonly string[];
+  in: Input<readonly string[]>;
   compilerOptions?: CompilerOptions;
   cwd?: string;
   [implicitDeps]?: readonly string[];
@@ -226,13 +228,13 @@ export function makeTSCRule(
     description: "Compiling $in",
     depfile: "$out.depfile",
     deps: "gcc",
-    in: needs<readonly string[]>(),
+    in: needs<Input<readonly string[]>>(),
     out: needs<string>(),
     cwd: needs<string>(),
     args: needs<string>(),
   });
   return (a: {
-    in: readonly string[];
+    in: Input<readonly string[]>;
     compilerOptions?: CompilerOptions;
     cwd?: string;
     [implicitDeps]?: readonly string[];
@@ -248,7 +250,7 @@ export function makeTSCRule(
       ...rest
     } = a;
     const argsArr = compilerOptionsToArray(compilerOptions);
-    const commandLine = ts.parseCommandLine(a.in.concat(argsArr));
+    const commandLine = ts.parseCommandLine(getInput(a).concat(argsArr));
 
     // We need to set this to something, else we get a debug exception
     // in `getOutputFileNames`
