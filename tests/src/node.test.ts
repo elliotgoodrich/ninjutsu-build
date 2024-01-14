@@ -12,6 +12,7 @@ test("makeNodeRule", () => {
   const out2: "out2.txt" = myNode({
     out: "out2.txt",
     in: "in.js",
+    args: "--test",
     [implicitDeps]: ["other"],
   });
   assert.equal(out2, "out2.txt");
@@ -31,7 +32,7 @@ rule myNode
   depfile = $out.depfile
   deps = gcc
 build out2.txt: myNode in.js | other
-  args = 
+  args = --test
 `,
   );
 });

@@ -54,6 +54,7 @@ export function makeNodeRule(
 ): <O extends string>(a: {
   in: Input<string>;
   out: O;
+  args?: string;
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
