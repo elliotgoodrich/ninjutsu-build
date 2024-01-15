@@ -6,18 +6,11 @@ import { NinjaBuilder, orderOnlyDeps } from "@ninjutsu-build/core";
 test("makeLintRule", () => {
   const ninja = new NinjaBuilder();
   const lint = makeLintRule(ninja);
-  const out: {
-    file: "foo.js";
-    [orderOnlyDeps]: "$builddir/.ninjutsu-build/biome/lint/foo.js";
-  } = lint({
+  const out: "$builddir/.ninjutsu-build/biome/lint/foo.js" = lint({
     in: "foo.js",
     configPath: "biome.json",
   });
-  assert.equal(out.file, "foo.js");
-  assert.equal(
-    out[orderOnlyDeps],
-    "$builddir/.ninjutsu-build/biome/lint/foo.js",
-  );
+  assert.equal(out, "$builddir/.ninjutsu-build/biome/lint/foo.js");
 });
 
 test("makeFormatRule", () => {

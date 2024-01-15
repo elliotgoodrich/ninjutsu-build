@@ -204,14 +204,8 @@ export function makeLintRule(
   [implicitDeps]?: readonly string[];
   [orderOnlyDeps]?: readonly string[];
   [implicitOut]?: readonly string[];
-  [validations]?: (out: {
-    file: string;
-    [orderOnlyDeps]: string;
-  }) => readonly string[];
-}) => {
-  file: I;
-  [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
-} {
+  [validations]?: (out: string) => readonly string[];
+}) => `$builddir/.ninjutsu-build/biome/lint/${I}` {
   const lint = ninja.rule(name, {
     command:
       prefix +
@@ -230,38 +224,14 @@ export function makeLintRule(
     [implicitDeps]?: readonly string[];
     [orderOnlyDeps]?: readonly string[];
     [implicitOut]?: readonly string[];
-    [validations]?: (out: {
-      file: string;
-      [orderOnlyDeps]: string;
-    }) => readonly string[];
-  }): {
-    file: I;
-    [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
-  } => {
-    const {
-      configPath,
-      [implicitDeps]: _implicitDeps = [],
-      [validations]: _validations,
-      ...rest
-    } = a;
-    const input = getInput(a);
-    const result = {
-      file: input,
-      [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/lint/${input}`,
-    } as const;
-    const validation =
-      _validations === undefined
-        ? undefined
-        : {
-            [validations]: () => _validations(result),
-          };
-    lint({
-      out: result[orderOnlyDeps],
+    [validations]?: (out: string) => readonly string[];
+  }): `$builddir/.ninjutsu-build/biome/lint/${I}` => {
+    const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
+    return lint({
+      out: `$builddir/.ninjutsu-build/biome/lint/${getInput(a)}`,
       configPath: dirname(configPath),
       ...rest,
       [implicitDeps]: _implicitDeps.concat(a.configPath),
-      ...validation,
     });
-    return result;
   };
 }
