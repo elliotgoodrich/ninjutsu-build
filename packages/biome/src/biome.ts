@@ -70,13 +70,13 @@ export function makeFormatRule(
   in: Input<I>;
   configPath: string;
   args?: string;
-  [implicitDeps]?: readonly string[];
-  [orderOnlyDeps]?: readonly string[];
-  [implicitOut]?: readonly string[];
+  [implicitDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
   [validations]?: (out: {
     file: string;
     [orderOnlyDeps]: string;
-  }) => readonly string[];
+  }) => string | readonly string[];
 }) => {
   file: I;
   [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${I}`;
@@ -96,13 +96,13 @@ export function makeFormatRule(
     in: Input<I>;
     configPath: string;
     args?: string;
-    [implicitDeps]?: readonly string[];
-    [orderOnlyDeps]?: readonly string[];
-    [implicitOut]?: readonly string[];
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: string | readonly string[];
+    [implicitOut]?: string | readonly string[];
     [validations]?: (out: {
       file: string;
       [orderOnlyDeps]: string;
-    }) => readonly string[];
+    }) => string | readonly string[];
   }): {
     file: I;
     [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${I}`;
@@ -201,10 +201,10 @@ export function makeLintRule(
   in: Input<I>;
   configPath: string;
   args?: string;
-  [implicitDeps]?: readonly string[];
-  [orderOnlyDeps]?: readonly string[];
-  [implicitOut]?: readonly string[];
-  [validations]?: (out: string) => readonly string[];
+  [implicitDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
+  [validations]?: (out: string) => string | readonly string[];
 }) => `$builddir/.ninjutsu-build/biome/lint/${I}` {
   const lint = ninja.rule(name, {
     command:
@@ -221,10 +221,10 @@ export function makeLintRule(
     in: Input<I>;
     configPath: string;
     args?: string;
-    [implicitDeps]?: readonly string[];
-    [orderOnlyDeps]?: readonly string[];
-    [implicitOut]?: readonly string[];
-    [validations]?: (out: string) => readonly string[];
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: string | readonly string[];
+    [implicitOut]?: string | readonly string[];
+    [validations]?: (out: string) => string | readonly string[];
   }): `$builddir/.ninjutsu-build/biome/lint/${I}` => {
     const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
     return lint({

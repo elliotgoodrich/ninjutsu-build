@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/tsc",
-  "version": "0.6.0",
+  "version": "0.8.0",
   "description": "Create a ninjutsu-build rule for running the TypeScript compiler (tsc)",
   "author": "Elliot Goodrich",
   "engines": {
@@ -22,7 +22,7 @@
     "which": "^4.0.0"
   },
   "peerDependencies": {
-    "@ninjutsu-build/core": "^0.6.0"
+    "@ninjutsu-build/core": "^0.7.0"
   },
   "devDependencies": {
     "@types/node": "^20.9.0"

@@ -55,10 +55,10 @@ export function makeNodeRule(
   in: Input<string>;
   out: O;
   args?: string;
-  [implicitDeps]?: readonly string[];
-  [orderOnlyDeps]?: readonly string[];
-  [implicitOut]?: readonly string[];
-  [validations]?: (out: string) => readonly string[];
+  [implicitDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
+  [validations]?: (out: string) => string | readonly string[];
 }) => O {
   return ninja.rule(name, {
     command,

@@ -110,10 +110,10 @@ export function makeTypeCheckRule(
   out: O;
   compilerOptions?: CompilerOptions;
   cwd?: string;
-  [implicitDeps]?: readonly string[];
-  [orderOnlyDeps]?: readonly string[];
-  [implicitOut]?: readonly string[];
-  [validations]?: (out: string) => readonly string[];
+  [implicitDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
+  [validations]?: (out: string) => string | readonly string[];
 }) => O {
   const rule = ninja.rule(name, {
     command:
@@ -132,10 +132,10 @@ export function makeTypeCheckRule(
     out: O;
     compilerOptions?: CompilerOptions;
     cwd?: string;
-    [implicitDeps]?: readonly string[];
-    [orderOnlyDeps]?: readonly string[];
-    [implicitOut]?: readonly string[];
-    [validations]?: (out: string) => readonly string[];
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: string | readonly string[];
+    [implicitOut]?: string | readonly string[];
+    [validations]?: (out: string) => string | readonly string[];
   }): O => {
     const { compilerOptions = {}, cwd = ".", ...rest } = a;
     return rule({
@@ -216,10 +216,10 @@ export function makeTSCRule(
   in: Input<readonly string[]>;
   compilerOptions?: CompilerOptions;
   cwd?: string;
-  [implicitDeps]?: readonly string[];
-  [orderOnlyDeps]?: readonly string[];
-  [implicitOut]?: readonly string[];
-  [validations]?: (out: readonly string[]) => readonly string[];
+  [implicitDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
+  [validations]?: (out: readonly string[]) => string | readonly string[];
 }) => readonly string[] {
   const tsc = ninja.rule(name, {
     command:
@@ -237,10 +237,10 @@ export function makeTSCRule(
     in: Input<readonly string[]>;
     compilerOptions?: CompilerOptions;
     cwd?: string;
-    [implicitDeps]?: readonly string[];
-    [orderOnlyDeps]?: readonly string[];
-    [implicitOut]?: readonly string[];
-    [validations]?: (out: readonly string[]) => readonly string[];
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: string | readonly string[];
+    [implicitOut]?: string | readonly string[];
+    [validations]?: (out: readonly string[]) => string | readonly string[];
   }): readonly string[] => {
     const {
       compilerOptions = {},

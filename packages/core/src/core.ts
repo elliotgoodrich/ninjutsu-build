@@ -206,7 +206,7 @@ type BuildArgs<
     [implicitDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
     [orderOnlyDeps]?: string | readonly string[];
-    [validations]?: (out: O) => readonly string[];
+    [validations]?: (out: O) => string | readonly string[];
     dyndep?: string;
     pool?: string;
   } & OptionalArgs<Omit<A, "command" | "description">>;
