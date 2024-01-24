@@ -1,7 +1,7 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
 import { NinjaBuilder, implicitDeps } from "@ninjutsu-build/core";
-import { makeNodeRule } from "@ninjutsu-build/node";
+import { makeNodeRule, makeNodeTestRule } from "@ninjutsu-build/node";
 
 test("makeNodeRule", () => {
   const ninja = new NinjaBuilder();
@@ -12,7 +12,7 @@ test("makeNodeRule", () => {
   const out2: "out2.txt" = myNode({
     out: "out2.txt",
     in: "in.js",
-    args: "--test",
+    args: "--foo",
     [implicitDeps]: ["other"],
   });
   assert.equal(out2, "out2.txt");
@@ -20,19 +20,34 @@ test("makeNodeRule", () => {
   assert.equal(
     ninja.output,
     `rule node
-  command = cmd /c node.exe --require "@ninjutsu-build/node/lib/hookRequire.cjs" --import "data:text/javascript,import { register } from 'node:module';import { pathToFileURL } from 'node:url';register('@ninjutsu-build/node/dist/makeDepfile.js', pathToFileURL('./'), { data: '$out' });" $in $args > $out
+  command = cmd /c node.exe --require "@ninjutsu-build/node/lib/hookRequire.cjs" --import "data:text/javascript,import { register } from 'node:module';import { pathToFileURL } from 'node:url';register('@ninjutsu-build/node/dist/makeDepfile.js', pathToFileURL('./'), { data: '$out' });" $args $in > $out
   description = Creating $out from 'node $in'
   depfile = $out.depfile
   deps = gcc
 build out.txt: node in.js
   args = 
 rule myNode
-  command = cmd /c node.exe --require "@ninjutsu-build/node/lib/hookRequire.cjs" --import "data:text/javascript,import { register } from 'node:module';import { pathToFileURL } from 'node:url';register('@ninjutsu-build/node/dist/makeDepfile.js', pathToFileURL('./'), { data: '$out' });" $in $args > $out
+  command = cmd /c node.exe --require "@ninjutsu-build/node/lib/hookRequire.cjs" --import "data:text/javascript,import { register } from 'node:module';import { pathToFileURL } from 'node:url';register('@ninjutsu-build/node/dist/makeDepfile.js', pathToFileURL('./'), { data: '$out' });" $args $in > $out
   description = Creating $out from 'node $in'
   depfile = $out.depfile
   deps = gcc
 build out2.txt: myNode in.js | other
-  args = --test
+  args = --foo
 `,
   );
+});
+
+test("makeNodeTestRule", () => {
+  const ninja = new NinjaBuilder();
+  const test = makeNodeTestRule(ninja);
+  const out: "out.txt" = test({ out: "out.txt", in: "in.js" });
+  assert.equal(out, "out.txt");
+  const myNode = makeNodeTestRule(ninja, "myTest");
+  const out2: "out2.txt" = myNode({
+    out: "out2.txt",
+    in: "in.js",
+    args: "--foo",
+    [implicitDeps]: ["other"],
+  });
+  assert.equal(out2, "out2.txt");
 });

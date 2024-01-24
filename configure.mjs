@@ -5,7 +5,7 @@ import {
   validations,
 } from "@ninjutsu-build/core";
 import { makeTSCRule } from "@ninjutsu-build/tsc";
-import { makeNodeRule } from "@ninjutsu-build/node";
+import { makeNodeTestRule } from "@ninjutsu-build/node";
 import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
 import { dirname, relative, join } from "node:path/posix";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -194,7 +194,7 @@ const toolsInstalled = ci({ in: "package.json" });
 
 const link = makeNpmLinkRule(ninja);
 const tsc = inject(makeTSCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
-const node = makeNodeRule(ninja);
+const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
 const prettier = inject(makePrettierRule(ninja), {
   [orderOnlyDeps]: toolsInstalled,
@@ -356,9 +356,9 @@ ninja.comment("Tests");
   // rerun all of the tests. Use a pool with a single depth to avoid running `tsc`
   // in parallel on the same project.
   const pool = ninja.pool("compiletests", { depth: 1 });
-  tests.forEach((test) => {
+  tests.forEach((t) => {
     const [js] = afterFormat(tsc)({
-      in: [test],
+      in: [t],
       compilerOptions: { ...compilerOptions, declaration: false },
       cwd,
       pool,
@@ -368,10 +368,9 @@ ninja.comment("Tests");
       // Also we can change this to only TypeScript declaration files.
       [implicitDeps]: [linked],
     });
-    node({
+    test({
       in: js,
       out: `${js}.result.txt`,
-      args: "--test",
     });
   });
 }

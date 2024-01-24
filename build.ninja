@@ -15,9 +15,9 @@ rule tsc
   description = Compiling $in
   depfile = $out.depfile
   deps = gcc
-rule node
-  command = cmd /c node.exe --require "@ninjutsu-build/node/lib/hookRequire.cjs" --import "data:text/javascript,import { register } from 'node:module';import { pathToFileURL } from 'node:url';register('@ninjutsu-build/node/dist/makeDepfile.js', pathToFileURL('./'), { data: '$out' });" $in $args > $out
-  description = Creating $out from 'node $in'
+rule test
+  command = cmd /c node.exe --require "@ninjutsu-build/node/lib/hookRequire.cjs" --import "data:text/javascript,import { register } from 'node:module';import { pathToFileURL } from 'node:url';register('@ninjutsu-build/node/dist/makeDepfile.js', pathToFileURL('./'), { data: '$out' });" --test --test-reporter=@ninjutsu-build/node/lib/testReporter.mjs --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $in
+  description = Running test $in
   depfile = $out.depfile
   deps = gcc
 rule tar
@@ -118,6 +118,14 @@ build $builddir/.ninjutsu-build/biome/format/packages/node/src/makeDepfile.ts: f
   cwd = packages/node
   configPath = .
   args = 
+build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/testReporter.mjs: lint packages/node/lib/testReporter.mjs | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/testReporter.mjs node_modules/.package-lock.json
+  configPath = .
+  cwd = packages/node
+  args = 
+build $builddir/.ninjutsu-build/biome/format/packages/node/lib/testReporter.mjs: format packages/node/lib/testReporter.mjs | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/testReporter.mjs
+  cwd = packages/node
+  configPath = .
+  args = 
 build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/hookRequire.cjs: lint packages/node/lib/hookRequire.cjs | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/hookRequire.cjs node_modules/.package-lock.json
   configPath = .
   cwd = packages/node
@@ -151,11 +159,12 @@ build $builddir/node/dist/node.js: copy packages/node/dist/node.js
 build $builddir/node/dist/node.d.ts: copy packages/node/dist/node.d.ts
 build $builddir/node/dist/makeDepfile.js: copy packages/node/dist/makeDepfile.js
 build $builddir/node/dist/makeDepfile.d.ts: copy packages/node/dist/makeDepfile.d.ts
+build $builddir/node/lib/testReporter.mjs: copy packages/node/lib/testReporter.mjs || $builddir/.ninjutsu-build/biome/format/packages/node/lib/testReporter.mjs
 build $builddir/node/lib/hookRequire.cjs: copy packages/node/lib/hookRequire.cjs || $builddir/.ninjutsu-build/biome/format/packages/node/lib/hookRequire.cjs
 build $builddir/node/lib/file.d.cts: copy packages/node/lib/file.d.cts || $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.d.cts
 build $builddir/node/lib/file.cjs: copy packages/node/lib/file.cjs || $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.cjs
-build $builddir/ninjutsu-build-node.tgz: tar $builddir/node/README.md $builddir/node/package.json $builddir/node/dist/node.js $builddir/node/dist/node.d.ts $builddir/node/dist/makeDepfile.js $builddir/node/dist/makeDepfile.d.ts $builddir/node/lib/hookRequire.cjs $builddir/node/lib/file.d.cts $builddir/node/lib/file.cjs
-  files = node/README.md node/package.json node/dist/node.js node/dist/node.d.ts node/dist/makeDepfile.js node/dist/makeDepfile.d.ts node/lib/hookRequire.cjs node/lib/file.d.cts node/lib/file.cjs
+build $builddir/ninjutsu-build-node.tgz: tar $builddir/node/README.md $builddir/node/package.json $builddir/node/dist/node.js $builddir/node/dist/node.d.ts $builddir/node/dist/makeDepfile.js $builddir/node/dist/makeDepfile.d.ts $builddir/node/lib/testReporter.mjs $builddir/node/lib/hookRequire.cjs $builddir/node/lib/file.d.cts $builddir/node/lib/file.cjs
+  files = node/README.md node/package.json node/dist/node.js node/dist/node.d.ts node/dist/makeDepfile.js node/dist/makeDepfile.d.ts node/lib/testReporter.mjs node/lib/hookRequire.cjs node/lib/file.d.cts node/lib/file.cjs
   args = -C $builddir
 
 # packages/tsc
@@ -241,23 +250,23 @@ build tests/dist/tsc.test.js: tsc tests/src/tsc.test.ts | $builddir/.ninjutsu-bu
   pool = compiletests
   cwd = tests
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
-build tests/dist/tsc.test.js.result.txt: node tests/dist/tsc.test.js
-  args = --test
+build tests/dist/tsc.test.js.result.txt: test tests/dist/tsc.test.js
+  args = 
 build tests/dist/node.test.js: tsc tests/src/node.test.ts | $builddir/.ninjutsu-build/npmlink/tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/src/node.test.ts node_modules/.package-lock.json
   pool = compiletests
   cwd = tests
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
-build tests/dist/node.test.js.result.txt: node tests/dist/node.test.js
-  args = --test
+build tests/dist/node.test.js.result.txt: test tests/dist/node.test.js
+  args = 
 build tests/dist/core.test.js: tsc tests/src/core.test.ts | $builddir/.ninjutsu-build/npmlink/tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/src/core.test.ts node_modules/.package-lock.json
   pool = compiletests
   cwd = tests
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
-build tests/dist/core.test.js.result.txt: node tests/dist/core.test.js
-  args = --test
+build tests/dist/core.test.js.result.txt: test tests/dist/core.test.js
+  args = 
 build tests/dist/biome.test.js: tsc tests/src/biome.test.ts | $builddir/.ninjutsu-build/npmlink/tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts node_modules/.package-lock.json
   pool = compiletests
   cwd = tests
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
-build tests/dist/biome.test.js.result.txt: node tests/dist/biome.test.js
-  args = --test
+build tests/dist/biome.test.js.result.txt: test tests/dist/biome.test.js
+  args = 
