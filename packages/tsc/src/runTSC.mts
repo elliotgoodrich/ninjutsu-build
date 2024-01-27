@@ -1,7 +1,8 @@
-import { execSync } from "node:child_process";
-import { argv, exit } from "node:process";
+import { execFile, execSync } from "node:child_process";
+import { argv } from "node:process";
 import { writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, join } from "node:path";
+import { promisify } from "node:util";
 
 function parseArgs(args: readonly string[]): {
   depfile?: string;
@@ -58,52 +59,63 @@ function parseArgs(args: readonly string[]): {
   return { depfile, out, touch, cwd, tsArgs, input };
 }
 
-try {
-  const { depfile, touch, out, cwd, tsArgs, input } = parseArgs(argv);
-  if (depfile !== undefined) {
-    const tsc = execSync("npm exec which --offline -- tsc", { cwd })
-      .toString()
-      .trim();
-    const files =
-      cwd !== undefined
-        ? input.map((i) => relative(cwd, i).replaceAll("\\", "/"))
-        : input;
-    const result = execSync(`${tsc} ${tsArgs.join(" ")} ${files.join(" ")}`, {
-      cwd,
-    });
-    const lines = result.toString().split("\n");
+async function run(): Promise<void> {
+  try {
+    const { depfile, touch, out, cwd, tsArgs, input } = parseArgs(argv);
+    if (depfile !== undefined) {
+      const tsc = execSync("npm exec which --offline -- tsc", {
+        cwd,
+      })
+        .toString()
+        .trim();
+      const files =
+        cwd !== undefined
+          ? input.map((i) => relative(cwd, i).replaceAll("\\", "/"))
+          : input;
+      const { stdout } = await promisify(execFile)(tsc, tsArgs.concat(files), {
+        cwd,
+      });
+      const lines = stdout.split("\n");
+      const scriptCwd = resolve();
+      let deps = out + ":";
+      const makeRelative = (path: string) => {
+        if (!isAbsolute(path)) {
+          // Relative paths at this point are within the project, they need to be
+          // adjusted to add back the `cwd` prefix that we removed on the inputs
+          return join(cwd ?? "", path);
+        }
 
-    const scriptCwd = resolve();
-    let deps = out + ":";
-    const makeRelative = (path: string) => {
-      if (!isAbsolute(path)) {
-        // Relative paths at this point are within the project, they need to be
-        // adjusted to add back the `cwd` prefix that we removed on the inputs
-        return join(cwd ?? "", path);
+        // Absolute paths are most likely references to things inside `node_modules`,
+        // but could be absolute paths given by the user to something else.  If the
+        // path is within the current working directory, replace with the relative
+        // path, otherwise keep it as absolute.
+        const relativeAttempt = relative(scriptCwd, path);
+        return relativeAttempt &&
+          !relativeAttempt.startsWith("..") &&
+          !isAbsolute(relativeAttempt)
+          ? relativeAttempt
+          : path;
+      };
+      for (const line of lines) {
+        deps += " " + makeRelative(line).replaceAll("\\", "/").trim();
       }
 
-      // Absolute paths are most likely references to things inside `node_modules`,
-      // but could be absolute paths given by the user to something else.  If the
-      // path is within the current working directory, replace with the relative
-      // path, otherwise keep it as absolute.
-      const relativeAttempt = relative(scriptCwd, path);
-      return relativeAttempt &&
-        !relativeAttempt.startsWith("..") &&
-        !isAbsolute(relativeAttempt)
-        ? relativeAttempt
-        : path;
-    };
-    for (const line of lines) {
-      deps += " " + makeRelative(line).replaceAll("\\", "/").trim();
+      writeFileSync(depfile, deps);
     }
 
-    writeFileSync(depfile, deps);
+    if (touch !== undefined) {
+      writeFileSync(touch, "");
+    }
+  } catch (e: unknown) {
+    process.exitCode = 1;
+    const error = e as { stdout: string };
+    const lines = error.stdout.split("\n");
+    // Print only error lines, attempting to filtering everything that is emitted
+    // using `--listFiles`
+    console.log(
+      lines.filter((line) => line.includes("): error TS")).join("\n"),
+    );
   }
-
-  if (touch !== undefined) {
-    writeFileSync(touch, "");
-  }
-} catch (e) {
-  console.log(`${e}`);
-  exit(1);
 }
+
+await run();
