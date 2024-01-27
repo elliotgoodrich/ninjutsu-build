@@ -258,11 +258,15 @@ const tars = (() => {
 
       // If `packageJSON` is changed (and only after we have run `npm ci`)
       // install our packages locally
-      const linked = afterFormat(link)({
-        in: packageJSON,
-        pkgs: graph[packageName].map((name) => packages[name]),
-        [orderOnlyDeps]: [dependenciesInstalled],
-      });
+      const pkgs = graph[packageName].map((name) => packages[name]);
+      const linked =
+        pkgs.length > 0
+          ? afterFormat(link)({
+              in: packageJSON,
+              pkgs,
+              [orderOnlyDeps]: [dependenciesInstalled],
+            })
+          : dependenciesInstalled;
 
       // Run prettier over `file` and then run `lint` as a validation step with a
       // order-only dependency on prettier finishing for that file. Make sure that

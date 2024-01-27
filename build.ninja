@@ -45,9 +45,6 @@ build $builddir/.ninjutsu-build/prettier/packages/core/package.json: prettier pa
   cwd = packages/core
 build packages/core/node_modules/.package-lock.json: npmci packages/core/package.json || $builddir/.ninjutsu-build/prettier/packages/core/package.json
   cwd = packages/core
-build $builddir/.ninjutsu-build/npmlink/packages/core/package.json: npmlink packages/core/package.json || packages/core/node_modules/.package-lock.json $builddir/.ninjutsu-build/prettier/packages/core/package.json
-  pkgs = 
-  cwd = packages/core
 build $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.ts: lint packages/core/src/core.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts node_modules/.package-lock.json
   configPath = .
   cwd = packages/core
@@ -56,7 +53,7 @@ build $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts: format p
   cwd = packages/core
   configPath = .
   args = 
-build packages/core/dist/core.js | packages/core/dist/core.d.ts: tsc packages/core/src/core.ts | $builddir/.ninjutsu-build/npmlink/packages/core/package.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts node_modules/.package-lock.json
+build packages/core/dist/core.js | packages/core/dist/core.d.ts: tsc packages/core/src/core.ts | packages/core/node_modules/.package-lock.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts node_modules/.package-lock.json
   cwd = packages/core
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
 build $builddir/core/README.md: copy packages/core/README.md
