@@ -13,7 +13,6 @@
     "rules": {
       "style": {
         "useTemplate": "off",
-        "noParameterAssign": "off",
         "noUselessElse": "off"
       }
     }

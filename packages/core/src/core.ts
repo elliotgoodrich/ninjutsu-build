@@ -109,11 +109,13 @@ function concatPaths(
         break;
       case "string":
         result += prefix + escapePath(paths);
+        // biome-ignore lint/style/noParameterAssign: more elegant to reassign `prefix`
         prefix = " ";
         break;
       default: {
         for (const path of paths) {
           result += prefix + escapePath(path);
+          // biome-ignore lint/style/noParameterAssign: more elegant to reassign `prefix`
           prefix = " ";
         }
       }
@@ -218,7 +220,6 @@ type BuildArgs<
 export function getInput<I>(buildArguments: { in: Input<I> }): I {
   const { in: _in } = buildArguments;
   //@ts-expect-error If `file` doesn't exist on `_in` then we handle this case.
-  // We could use `_in.?["file"]` but then the `biome` linter isn't happy
   return _in?.file ?? _in;
 }
 
