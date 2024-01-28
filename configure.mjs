@@ -72,35 +72,6 @@ function makeTarRule(ninja) {
   };
 }
 
-// This creates a rule that runs prettier on `in` and overwrites the file,
-// while creating an empty `out` file to timestamp when it was run.
-// In order to chain this up with other rules, we need to make sure that
-// the stamp file is added to the orderOnlyDeps.  Return the object
-// `{ file: in, [orderOnlyDeps]: out }` that is designed to be passed to a rule
-// wrapped with `afterFormat`.
-function makePrettierRule(ninja) {
-  const prettier = ninja.rule("prettier", {
-    command:
-      prefix +
-      "npm exec --offline --prefix $cwd prettier -- $in --write --log-level silent && " +
-      touch,
-    description: "Formatting $in",
-  });
-  return (a) => {
-    const { [validations]: _validations = () => {}, ...rest } = a;
-    const result = {
-      file: a.in,
-      [orderOnlyDeps]: "$builddir/.ninjutsu-build/prettier/" + a.in,
-    };
-    prettier({
-      ...rest,
-      out: result[orderOnlyDeps],
-      [validations]: (out) => _validations(result),
-    });
-    return result;
-  };
-}
-
 // Wrap the `rule` so that it accepts `{ file: string, [orderOnlyDeps]: string }` (or an array)
 // containing those objects, forwarding on `file` to `in`, and combining the `[orderOnlyDeps]`.
 function afterFormat(rule) {
@@ -196,9 +167,6 @@ const link = makeNpmLinkRule(ninja);
 const tsc = inject(makeTSCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
 const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
-const prettier = inject(makePrettierRule(ninja), {
-  [orderOnlyDeps]: toolsInstalled,
-});
 const format = addBiomeConfig(
   inject(makeFormatRule(ninja), {
     [orderOnlyDeps]: toolsInstalled,
@@ -248,8 +216,8 @@ const tars = (() => {
       const cwd = join("packages", packageName);
       ninja.comment(cwd);
 
-      // Run prettier over package.json
-      const packageJSON = prettier({ in: join(cwd, "package.json"), cwd });
+      // Format package.json
+      const packageJSON = format({ in: join(cwd, "package.json") });
 
       // Run `npm ci`
       const dependenciesInstalled = afterFormat(ci)({
@@ -268,23 +236,23 @@ const tars = (() => {
             })
           : dependenciesInstalled;
 
-      // Run prettier over `file` and then run `lint` as a validation step with a
-      // order-only dependency on prettier finishing for that file. Make sure that
-      // we start only after lint/biome have been installed.
-      const format = (file) =>
+      // Format `file` and then run `lint` as a validation step with a
+      // order-only dependency on formatting finishing for that file. Make sure that
+      // we start only after biome have been installed.
+      const f = (file) =>
         formatAndLint(cwd, file, {
           [orderOnlyDeps]: [dependenciesInstalled],
         });
 
-      // Grab all TypeScript source files and run prettier over them
-      const ts = globSync(join(cwd, "src", "*.*"), { posix: true }).map(format);
+      // Grab all TypeScript source files and format them
+      const ts = globSync(join(cwd, "src", "*.*"), { posix: true }).map(f);
 
       // In the `lib` directory we have JavaScript files and TS declaration files
       const lib = globSync(join(cwd, "lib", "*.*"), {
         posix: true,
-      }).map(format);
+      }).map(f);
 
-      // Transpile the TypeScript into JavaScript once prettier has finished
+      // Transpile the TypeScript into JavaScript once formatting has finished
       const dist = afterFormat(tsc)({
         in: ts,
         compilerOptions,
@@ -332,11 +300,8 @@ ninja.comment("Tests");
 {
   const cwd = "tests";
 
-  // Run prettier over tests/package.json
-  const packageJSON = prettier({
-    in: cwd + "/package.json",
-    cwd,
-  });
+  // Format tests/package.json
+  const packageJSON = format({ in: join(cwd, "package.json") });
 
   // Run `npm ci`
   const dependenciesInstalled = afterFormat(ci)({
@@ -349,12 +314,12 @@ ninja.comment("Tests");
     [orderOnlyDeps]: [dependenciesInstalled],
   });
 
-  // Grab all TypeScript source files and run prettier over them
+  // Grab all TypeScript source files and format them
   const tests = globSync("tests/src/*.*", { posix: true }).map((file) =>
     formatAndLint(cwd, file, { [orderOnlyDeps]: [dependenciesInstalled] }),
   );
 
-  // Transpile the TypeScript into JavaScript once prettier has finished, do this
+  // Transpile the TypeScript into JavaScript once formatting has finished, do this
   // separately for each file because if we do it together and one file changes,
   // `tsc` will regenerate the output for all of them and cause us to have to
   // rerun all of the tests. Use a pool with a single depth to avoid running `tsc`

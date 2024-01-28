@@ -7,12 +7,7 @@
     "node": ">=18.0.0"
   },
   "main": "dist/biome.js",
-  "keywords": [
-    "ninja",
-    "ninja-build",
-    "build",
-    "biome"
-  ],
+  "keywords": ["ninja", "ninja-build", "build", "biome"],
   "license": "MIT",
   "peerDependencies": {
     "@biomejs/biome": "1.x",

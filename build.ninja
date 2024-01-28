@@ -23,9 +23,6 @@ rule test
 rule tar
   command = tar -czf $out $args $files
   description = Creating archive $out
-rule prettier
-  command = cmd /c npm exec --offline --prefix $cwd prettier -- $in --write --log-level silent && type NUL > $out
-  description = Formatting $in
 rule format
   command = cmd /c node_modules\@biomejs\cli-win32-x64\biome.exe format $args --config-path $configPath --write $in > $out
   description = Formatting $in
@@ -41,9 +38,10 @@ build $builddir/.ninjutsu-build/biome/format/configure.mjs: format configure.mjs
   args = 
 
 # packages/core
-build $builddir/.ninjutsu-build/prettier/packages/core/package.json: prettier packages/core/package.json || node_modules/.package-lock.json
-  cwd = packages/core
-build packages/core/node_modules/.package-lock.json: npmci packages/core/package.json || $builddir/.ninjutsu-build/prettier/packages/core/package.json
+build $builddir/.ninjutsu-build/biome/format/packages/core/package.json: format packages/core/package.json | ./biome.json || node_modules/.package-lock.json
+  configPath = .
+  args = 
+build packages/core/node_modules/.package-lock.json: npmci packages/core/package.json || $builddir/.ninjutsu-build/biome/format/packages/core/package.json
   cwd = packages/core
 build $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.ts: lint packages/core/src/core.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts node_modules/.package-lock.json
   configPath = .
@@ -57,7 +55,7 @@ build packages/core/dist/core.js | packages/core/dist/core.d.ts: tsc packages/co
   cwd = packages/core
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
 build $builddir/core/README.md: copy packages/core/README.md
-build $builddir/core/package.json: copy packages/core/package.json || $builddir/.ninjutsu-build/prettier/packages/core/package.json
+build $builddir/core/package.json: copy packages/core/package.json || $builddir/.ninjutsu-build/biome/format/packages/core/package.json
 build $builddir/core/dist/core.js: copy packages/core/dist/core.js
 build $builddir/core/dist/core.d.ts: copy packages/core/dist/core.d.ts
 build $builddir/ninjutsu-build-core.tgz: tar $builddir/core/README.md $builddir/core/package.json $builddir/core/dist/core.js $builddir/core/dist/core.d.ts
@@ -65,11 +63,12 @@ build $builddir/ninjutsu-build-core.tgz: tar $builddir/core/README.md $builddir/
   args = -C $builddir
 
 # packages/biome
-build $builddir/.ninjutsu-build/prettier/packages/biome/package.json: prettier packages/biome/package.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/biome/package.json: format packages/biome/package.json | ./biome.json || node_modules/.package-lock.json
+  configPath = .
+  args = 
+build packages/biome/node_modules/.package-lock.json: npmci packages/biome/package.json || $builddir/.ninjutsu-build/biome/format/packages/biome/package.json
   cwd = packages/biome
-build packages/biome/node_modules/.package-lock.json: npmci packages/biome/package.json || $builddir/.ninjutsu-build/prettier/packages/biome/package.json
-  cwd = packages/biome
-build $builddir/.ninjutsu-build/npmlink/packages/biome/package.json: npmlink packages/biome/package.json | $builddir/ninjutsu-build-core.tgz || packages/biome/node_modules/.package-lock.json $builddir/.ninjutsu-build/prettier/packages/biome/package.json
+build $builddir/.ninjutsu-build/npmlink/packages/biome/package.json: npmlink packages/biome/package.json | $builddir/ninjutsu-build-core.tgz || packages/biome/node_modules/.package-lock.json $builddir/.ninjutsu-build/biome/format/packages/biome/package.json
   pkgs = $builddir/ninjutsu-build-core.tgz
   cwd = packages/biome
 build $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.ts: lint packages/biome/src/biome.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.ts node_modules/.package-lock.json
@@ -84,7 +83,7 @@ build packages/biome/dist/biome.js | packages/biome/dist/biome.d.ts: tsc package
   cwd = packages/biome
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
 build $builddir/biome/README.md: copy packages/biome/README.md
-build $builddir/biome/package.json: copy packages/biome/package.json || $builddir/.ninjutsu-build/prettier/packages/biome/package.json
+build $builddir/biome/package.json: copy packages/biome/package.json || $builddir/.ninjutsu-build/biome/format/packages/biome/package.json
 build $builddir/biome/dist/biome.js: copy packages/biome/dist/biome.js
 build $builddir/biome/dist/biome.d.ts: copy packages/biome/dist/biome.d.ts
 build $builddir/ninjutsu-build-biome.tgz: tar $builddir/biome/README.md $builddir/biome/package.json $builddir/biome/dist/biome.js $builddir/biome/dist/biome.d.ts
@@ -92,11 +91,12 @@ build $builddir/ninjutsu-build-biome.tgz: tar $builddir/biome/README.md $builddi
   args = -C $builddir
 
 # packages/node
-build $builddir/.ninjutsu-build/prettier/packages/node/package.json: prettier packages/node/package.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/node/package.json: format packages/node/package.json | ./biome.json || node_modules/.package-lock.json
+  configPath = .
+  args = 
+build packages/node/node_modules/.package-lock.json: npmci packages/node/package.json || $builddir/.ninjutsu-build/biome/format/packages/node/package.json
   cwd = packages/node
-build packages/node/node_modules/.package-lock.json: npmci packages/node/package.json || $builddir/.ninjutsu-build/prettier/packages/node/package.json
-  cwd = packages/node
-build $builddir/.ninjutsu-build/npmlink/packages/node/package.json: npmlink packages/node/package.json | $builddir/ninjutsu-build-core.tgz || packages/node/node_modules/.package-lock.json $builddir/.ninjutsu-build/prettier/packages/node/package.json
+build $builddir/.ninjutsu-build/npmlink/packages/node/package.json: npmlink packages/node/package.json | $builddir/ninjutsu-build-core.tgz || packages/node/node_modules/.package-lock.json $builddir/.ninjutsu-build/biome/format/packages/node/package.json
   pkgs = $builddir/ninjutsu-build-core.tgz
   cwd = packages/node
 build $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.ts: lint packages/node/src/node.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/node.ts node_modules/.package-lock.json
@@ -151,7 +151,7 @@ build packages/node/dist/node.js | packages/node/dist/node.d.ts packages/node/di
   cwd = packages/node
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
 build $builddir/node/README.md: copy packages/node/README.md
-build $builddir/node/package.json: copy packages/node/package.json || $builddir/.ninjutsu-build/prettier/packages/node/package.json
+build $builddir/node/package.json: copy packages/node/package.json || $builddir/.ninjutsu-build/biome/format/packages/node/package.json
 build $builddir/node/dist/node.js: copy packages/node/dist/node.js
 build $builddir/node/dist/node.d.ts: copy packages/node/dist/node.d.ts
 build $builddir/node/dist/makeDepfile.js: copy packages/node/dist/makeDepfile.js
@@ -165,11 +165,12 @@ build $builddir/ninjutsu-build-node.tgz: tar $builddir/node/README.md $builddir/
   args = -C $builddir
 
 # packages/tsc
-build $builddir/.ninjutsu-build/prettier/packages/tsc/package.json: prettier packages/tsc/package.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json: format packages/tsc/package.json | ./biome.json || node_modules/.package-lock.json
+  configPath = .
+  args = 
+build packages/tsc/node_modules/.package-lock.json: npmci packages/tsc/package.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json
   cwd = packages/tsc
-build packages/tsc/node_modules/.package-lock.json: npmci packages/tsc/package.json || $builddir/.ninjutsu-build/prettier/packages/tsc/package.json
-  cwd = packages/tsc
-build $builddir/.ninjutsu-build/npmlink/packages/tsc/package.json: npmlink packages/tsc/package.json | $builddir/ninjutsu-build-core.tgz || packages/tsc/node_modules/.package-lock.json $builddir/.ninjutsu-build/prettier/packages/tsc/package.json
+build $builddir/.ninjutsu-build/npmlink/packages/tsc/package.json: npmlink packages/tsc/package.json | $builddir/ninjutsu-build-core.tgz || packages/tsc/node_modules/.package-lock.json $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json
   pkgs = $builddir/ninjutsu-build-core.tgz
   cwd = packages/tsc
 build $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.ts: lint packages/tsc/src/tsc.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.ts node_modules/.package-lock.json
@@ -192,7 +193,7 @@ build packages/tsc/dist/tsc.js | packages/tsc/dist/tsc.d.ts packages/tsc/dist/ru
   cwd = packages/tsc
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
 build $builddir/tsc/README.md: copy packages/tsc/README.md
-build $builddir/tsc/package.json: copy packages/tsc/package.json || $builddir/.ninjutsu-build/prettier/packages/tsc/package.json
+build $builddir/tsc/package.json: copy packages/tsc/package.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json
 build $builddir/tsc/dist/tsc.js: copy packages/tsc/dist/tsc.js
 build $builddir/tsc/dist/tsc.d.ts: copy packages/tsc/dist/tsc.d.ts
 build $builddir/tsc/dist/runTSC.mjs: copy packages/tsc/dist/runTSC.mjs
@@ -202,11 +203,12 @@ build $builddir/ninjutsu-build-tsc.tgz: tar $builddir/tsc/README.md $builddir/ts
   args = -C $builddir
 
 # Tests
-build $builddir/.ninjutsu-build/prettier/tests/package.json: prettier tests/package.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/tests/package.json: format tests/package.json | ./biome.json || node_modules/.package-lock.json
+  configPath = .
+  args = 
+build tests/node_modules/.package-lock.json: npmci tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/package.json
   cwd = tests
-build tests/node_modules/.package-lock.json: npmci tests/package.json || $builddir/.ninjutsu-build/prettier/tests/package.json
-  cwd = tests
-build $builddir/.ninjutsu-build/npmlink/tests/package.json: npmlink tests/package.json | $builddir/ninjutsu-build-core.tgz $builddir/ninjutsu-build-biome.tgz $builddir/ninjutsu-build-node.tgz $builddir/ninjutsu-build-tsc.tgz || tests/node_modules/.package-lock.json $builddir/.ninjutsu-build/prettier/tests/package.json
+build $builddir/.ninjutsu-build/npmlink/tests/package.json: npmlink tests/package.json | $builddir/ninjutsu-build-core.tgz $builddir/ninjutsu-build-biome.tgz $builddir/ninjutsu-build-node.tgz $builddir/ninjutsu-build-tsc.tgz || tests/node_modules/.package-lock.json $builddir/.ninjutsu-build/biome/format/tests/package.json
   pkgs = $builddir/ninjutsu-build-core.tgz $builddir/ninjutsu-build-biome.tgz $builddir/ninjutsu-build-node.tgz $builddir/ninjutsu-build-tsc.tgz
   cwd = tests
 build $builddir/.ninjutsu-build/biome/lint/tests/src/tsc.test.ts: lint tests/src/tsc.test.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts node_modules/.package-lock.json

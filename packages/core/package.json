@@ -7,11 +7,7 @@
     "node": ">=18.0.0"
   },
   "main": "dist/core.js",
-  "keywords": [
-    "ninja",
-    "ninja-build",
-    "build"
-  ],
+  "keywords": ["ninja", "ninja-build", "build"],
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.2.2"
