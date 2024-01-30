@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/biome",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "A biome plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
   "engines": {

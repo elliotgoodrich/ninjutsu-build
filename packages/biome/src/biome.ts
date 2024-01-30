@@ -211,7 +211,7 @@ export function makeLintRule(
       prefix +
       join("node_modules", biomeCommand) +
       " lint $args --config-path $configPath $in > $out",
-    description: "Formatting $in",
+    description: "Linting $in",
     in: needs<Input<string>>(),
     out: needs<string>(),
     configPath: needs<string>(),
