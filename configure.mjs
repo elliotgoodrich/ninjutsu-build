@@ -1,13 +1,14 @@
 import {
   NinjaBuilder,
+  getInput,
   implicitDeps,
   orderOnlyDeps,
   validations,
 } from "@ninjutsu-build/core";
-import { makeTSCRule } from "@ninjutsu-build/tsc";
+import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
 import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
-import { dirname, relative, join } from "node:path/posix";
+import { basename, dirname, extname, relative, join } from "node:path/posix";
 import { readFileSync, writeFileSync } from "node:fs";
 import { globSync } from "glob";
 import { platform } from "os";
@@ -96,6 +97,13 @@ function makeCopyRule(ninja) {
   });
 }
 
+function makeSWCRule(ninja) {
+  return ninja.rule("swc", {
+    command: prefix + "npx swc $in -o $out -q $args",
+    description: "Transpiling $in",
+  });
+}
+
 function formatAndLint(cwd, file, deps) {
   return format({
     in: file,
@@ -165,6 +173,9 @@ const toolsInstalled = ci({ in: "package.json" });
 
 const link = makeNpmLinkRule(ninja);
 const tsc = inject(makeTSCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
+const typecheck = inject(makeTypeCheckRule(ninja), {
+  [orderOnlyDeps]: toolsInstalled,
+});
 const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
 const format = addBiomeConfig(
@@ -180,6 +191,7 @@ const lint = addBiomeConfig(
   "./biome.json",
 );
 const copy = makeCopyRule(ninja);
+const swc = makeSWCRule(ninja);
 
 // TODO: Add a validation that `package.json` is formatted correctly.
 // We need to format after running `npmci` but then formatting the
@@ -319,28 +331,45 @@ ninja.comment("Tests");
     formatAndLint(cwd, file, { [orderOnlyDeps]: [dependenciesInstalled] }),
   );
 
-  // Transpile the TypeScript into JavaScript once formatting has finished, do this
-  // separately for each file because if we do it together and one file changes,
-  // `tsc` will regenerate the output for all of them and cause us to have to
-  // rerun all of the tests. Use a pool with a single depth to avoid running `tsc`
-  // in parallel on the same project.
-  const pool = ninja.pool("compiletests", { depth: 1 });
-  tests.forEach((t) => {
-    const [js] = afterFormat(tsc)({
-      in: [t],
-      compilerOptions: { ...compilerOptions, declaration: false },
-      cwd,
-      pool,
-      // We must use `implicitDeps` instead of `orderOnlyDeps` as the `npmci` rule does
-      // not yet use `dyndeps` to describe what files it creates in `node_modules`. When
-      // we do generate this we can use `orderOnlyDeps` instead.
-      // Also we can change this to only TypeScript declaration files.
-      [implicitDeps]: [linked],
-    });
-    test({
-      in: js,
-      out: `${js}.result.txt`,
-    });
+  const typechecked = "$builddir/tests/typechecked.stamp";
+
+  // Transpile and run each test individually and return all of them in
+  // a format that can be passed to `typecheck`.
+  const toTypeCheck = tests.reduce(
+    (acc, t) => {
+      const file = getInput({ in: t });
+      const js = afterFormat(swc)({
+        in: t,
+        out: "tests/dist/" + basename(file, extname(file)) + ".mjs",
+        [validations]: () => typechecked,
+        args: "-C jsc.target=es2018",
+      });
+      test({
+        in: js,
+        out: `${js}.result.txt`,
+        [implicitDeps]: [linked],
+      });
+
+      // TODO: `typecheck` should accept a wider format to
+      // avoid this transformation.
+      acc.file.push(file);
+      if (t[orderOnlyDeps]) {
+        acc[orderOnlyDeps].push(t[orderOnlyDeps]);
+      }
+      if (t[implicitDeps]) {
+        acc[implicitDeps].push(t[implicitDeps]);
+      }
+      return acc;
+    },
+    { file: [], [orderOnlyDeps]: [], [implicitDeps]: [] },
+  );
+
+  typecheck({
+    in: toTypeCheck,
+    out: typechecked,
+    compilerOptions,
+    cwd,
+    [implicitDeps]: [linked],
   });
 }
 
