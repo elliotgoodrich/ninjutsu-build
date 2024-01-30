@@ -118,7 +118,7 @@ export function makeTypeCheckRule(
   const rule = ninja.rule(name, {
     command:
       prefix +
-      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFilesOnly $args $in",
+      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFilesOnly $args -- $in",
     description: "Typechecking $in",
     in: needs<Input<readonly string[]>>(),
     out: needs<string>(),
