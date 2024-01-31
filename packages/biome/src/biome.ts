@@ -113,7 +113,7 @@ export function makeFormatRule(
       configPath,
       ...rest
     } = a;
-    const input = getInput(a);
+    const input = getInput(a.in);
     const result = {
       file: input,
       [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${input}`,
@@ -228,7 +228,7 @@ export function makeLintRule(
   }): `$builddir/.ninjutsu-build/biome/lint/${I}` => {
     const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
     return lint({
-      out: `$builddir/.ninjutsu-build/biome/lint/${getInput(a)}`,
+      out: `$builddir/.ninjutsu-build/biome/lint/${getInput(a.in)}`,
       configPath: dirname(configPath),
       ...rest,
       [implicitDeps]: _implicitDeps.concat(a.configPath),

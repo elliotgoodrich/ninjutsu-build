@@ -1,7 +1,7 @@
 import {
   type NinjaBuilder,
   type Input,
-  getInput,
+  getInputs,
   escapePath,
   needs,
   implicitDeps,
@@ -106,7 +106,7 @@ export function makeTypeCheckRule(
   ninja: NinjaBuilder,
   name = "typecheck",
 ): <O extends string>(a: {
-  in: Input<readonly string[]>;
+  in: readonly Input<string>[];
   out: O;
   compilerOptions?: CompilerOptions;
   cwd?: string;
@@ -120,7 +120,7 @@ export function makeTypeCheckRule(
       prefix +
       "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFilesOnly $args -- $in",
     description: "Typechecking $in",
-    in: needs<Input<readonly string[]>>(),
+    in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
     depfile: "$out.depfile",
     deps: "gcc",
@@ -128,7 +128,7 @@ export function makeTypeCheckRule(
     cwd: needs<string>(),
   });
   return <O extends string>(a: {
-    in: Input<readonly string[]>;
+    in: readonly Input<string>[];
     out: O;
     compilerOptions?: CompilerOptions;
     cwd?: string;
@@ -213,7 +213,7 @@ export function makeTSCRule(
   ninja: NinjaBuilder,
   name = "tsc",
 ): (a: {
-  in: Input<readonly string[]>;
+  in: readonly Input<string>[];
   compilerOptions?: CompilerOptions;
   cwd?: string;
   [implicitDeps]?: string | readonly string[];
@@ -228,13 +228,13 @@ export function makeTSCRule(
     description: "Compiling $in",
     depfile: "$out.depfile",
     deps: "gcc",
-    in: needs<Input<readonly string[]>>(),
+    in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
     cwd: needs<string>(),
     args: needs<string>(),
   });
   return (a: {
-    in: Input<readonly string[]>;
+    in: readonly Input<string>[];
     compilerOptions?: CompilerOptions;
     cwd?: string;
     [implicitDeps]?: string | readonly string[];
@@ -250,7 +250,7 @@ export function makeTSCRule(
       ...rest
     } = a;
     const argsArr = compilerOptionsToArray(compilerOptions);
-    const commandLine = ts.parseCommandLine(getInput(a).concat(argsArr));
+    const commandLine = ts.parseCommandLine(getInputs(a.in).concat(argsArr));
 
     // We need to set this to something, else we get a debug exception
     // in `getOutputFileNames`

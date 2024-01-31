@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/biome",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "A biome plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
   "engines": {
@@ -11,7 +11,7 @@
   "license": "MIT",
   "peerDependencies": {
     "@biomejs/biome": "1.x",
-    "@ninjutsu-build/core": "^0.7.0"
+    "@ninjutsu-build/core": "^0.8.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.6"

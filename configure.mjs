@@ -23,7 +23,7 @@ function makeNpmCiRule(ninja) {
     description: "npm ci ($cwd)",
   });
   return (a) => {
-    const cwd = dirname(a.in);
+    const cwd = dirname(getInput(a.in));
     return ci({
       ...a,
       out: join(cwd, "node_modules", ".package-lock.json"),
@@ -39,12 +39,13 @@ function makeNpmLinkRule(ninja) {
     description: "npm link $pkgs ($cwd)",
   });
   return (a) => {
-    const cwd = dirname(a.in);
+    const input = getInput(a.in);
+    const cwd = dirname(input);
     const pkgs = a.pkgs;
     const deps = a[implicitDeps] ?? [];
     return ci({
       ...a,
-      out: `$builddir/.ninjutsu-build/npmlink/${a.in}`,
+      out: `$builddir/.ninjutsu-build/npmlink/${input}`,
       pkgs: pkgs.join(" "),
       cwd,
       [implicitDeps]: deps.concat(pkgs),
@@ -73,23 +74,6 @@ function makeTarRule(ninja) {
   };
 }
 
-// Wrap the `rule` so that it accepts `{ file: string, [orderOnlyDeps]: string }` (or an array)
-// containing those objects, forwarding on `file` to `in`, and combining the `[orderOnlyDeps]`.
-function afterFormat(rule) {
-  return (a) => {
-    const { in: _in, [orderOnlyDeps]: _orderOnlyDeps = [], ...rest } = a;
-    return rule({
-      in: Array.isArray(_in) ? _in.map(({ file }) => file) : _in.file,
-      [orderOnlyDeps]: _orderOnlyDeps.concat(
-        Array.isArray(_in)
-          ? _in.map(({ [orderOnlyDeps]: deps }) => deps)
-          : _in[orderOnlyDeps],
-      ),
-      ...rest,
-    });
-  };
-}
-
 function makeCopyRule(ninja) {
   return ninja.rule("copy", {
     command: "cp $in $out",
@@ -108,7 +92,7 @@ function formatAndLint(cwd, file, deps) {
   return format({
     in: file,
     cwd,
-    [validations]: (out) => afterFormat(lint)({ in: out, cwd }),
+    [validations]: (out) => lint({ in: out }),
     [orderOnlyDeps]: deps[orderOnlyDeps],
   });
 }
@@ -232,16 +216,14 @@ const tars = (() => {
       const packageJSON = format({ in: join(cwd, "package.json") });
 
       // Run `npm ci`
-      const dependenciesInstalled = afterFormat(ci)({
-        in: packageJSON,
-      });
+      const dependenciesInstalled = ci({ in: packageJSON });
 
       // If `packageJSON` is changed (and only after we have run `npm ci`)
       // install our packages locally
       const pkgs = graph[packageName].map((name) => packages[name]);
       const linked =
         pkgs.length > 0
-          ? afterFormat(link)({
+          ? link({
               in: packageJSON,
               pkgs,
               [orderOnlyDeps]: [dependenciesInstalled],
@@ -265,7 +247,7 @@ const tars = (() => {
       }).map(f);
 
       // Transpile the TypeScript into JavaScript once formatting has finished
-      const dist = afterFormat(tsc)({
+      const dist = tsc({
         in: ts,
         compilerOptions,
         cwd,
@@ -284,17 +266,15 @@ const tars = (() => {
         const { in: _in, ...rest } = args;
         return copy({
           in: _in,
-          out: `$builddir/${packageName}/${relative(cwd, _in)}`,
+          out: `$builddir/${packageName}/${relative(cwd, getInput(_in))}`,
           ...rest,
         });
       };
       let toPack = [];
       toPack.push(stageForTar({ in: join(cwd, "README.md") }));
-      toPack.push(afterFormat(stageForTar)({ in: packageJSON }));
+      toPack.push(stageForTar({ in: packageJSON }));
       toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
-      toPack = toPack.concat(
-        lib.map((file) => afterFormat(stageForTar)({ in: file })),
-      );
+      toPack = toPack.concat(lib.map((file) => stageForTar({ in: file })));
 
       return Object.assign({}, packages, {
         [packageName]: tar({
@@ -316,11 +296,9 @@ ninja.comment("Tests");
   const packageJSON = format({ in: join(cwd, "package.json") });
 
   // Run `npm ci`
-  const dependenciesInstalled = afterFormat(ci)({
-    in: packageJSON,
-  });
+  const dependenciesInstalled = ci({ in: packageJSON });
 
-  const linked = afterFormat(link)({
+  const linked = link({
     in: packageJSON,
     pkgs: Object.values(tars),
     [orderOnlyDeps]: [dependenciesInstalled],
@@ -337,8 +315,8 @@ ninja.comment("Tests");
   // a format that can be passed to `typecheck`.
   const toTypeCheck = tests.reduce(
     (acc, t) => {
-      const file = getInput({ in: t });
-      const js = afterFormat(swc)({
+      const file = getInput(t);
+      const js = swc({
         in: t,
         out: "tests/dist/" + basename(file, extname(file)) + ".mjs",
         [validations]: () => typechecked,

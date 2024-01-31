@@ -4,9 +4,11 @@ import { strict as assert } from "node:assert";
 import type { Equals } from "tsafe";
 import {
   NinjaBuilder,
-  Input,
-  Variable,
+  type Input,
+  type Variable,
   console,
+  getInput,
+  getInputs,
   needs,
   orderOnlyDeps,
   implicitDeps,
@@ -22,6 +24,29 @@ test("needs", () => {
   assert.equal(needs<boolean>(), undefined);
   assert.equal(needs<number>(), undefined);
   assert.equal(needs<string>(), undefined);
+});
+
+test("getInput(s)", () => {
+  {
+    const input: "foo" = getInput("foo");
+    assert.equal(input, "foo");
+  }
+  {
+    const input: "foo" = getInput({ file: "foo" });
+    assert.equal(input, "foo");
+  }
+  {
+    const input: readonly "foo"[] = getInputs(["foo"]);
+    assert.deepEqual(input, ["foo"]);
+  }
+  {
+    const input: readonly ("foo" | "bar")[] = getInputs(["foo", "bar"]);
+    assert.deepEqual(input, ["foo", "bar"]);
+  }
+  {
+    const input: readonly string[] = getInputs(["foo"] as string[]);
+    assert.deepEqual(input, ["foo"]);
+  }
 });
 
 test("constructor", () => {
