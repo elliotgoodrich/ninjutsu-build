@@ -17,6 +17,8 @@ import toposort from "toposort";
 const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
+const useBun = process.argv.includes("--bun");
+
 function makeNpmCiRule(ninja) {
   const ci = ninja.rule("npmci", {
     command: prefix + "npm ci --prefix $cwd --silent",
@@ -84,6 +86,13 @@ function makeCopyRule(ninja) {
 function makeSWCRule(ninja) {
   return ninja.rule("swc", {
     command: prefix + "npx swc $in -o $out -q $args",
+    description: "Transpiling $in",
+  });
+}
+
+function makeBunRule(ninja) {
+  return ninja.rule("bun", {
+    command: "bun build $in --target node --no-bundle --outfile $out",
     description: "Transpiling $in",
   });
 }
@@ -175,7 +184,7 @@ const lint = addBiomeConfig(
   "./biome.json",
 );
 const copy = makeCopyRule(ninja);
-const swc = makeSWCRule(ninja);
+const transpile = useBun ? makeBunRule(ninja) : makeSWCRule(ninja);
 
 // TODO: Add a validation that `package.json` is formatted correctly.
 // We need to format after running `npmci` but then formatting the
@@ -316,7 +325,7 @@ ninja.comment("Tests");
   const toTypeCheck = tests.reduce(
     (acc, t) => {
       const file = getInput(t);
-      const js = swc({
+      const js = transpile({
         in: t,
         out: "tests/dist/" + basename(file, extname(file)) + ".mjs",
         [validations]: () => typechecked,
