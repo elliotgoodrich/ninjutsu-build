@@ -371,3 +371,31 @@ build out3: generate
 `,
   );
 });
+
+test("additional rule dependencies", () => {
+  const ninja = new NinjaBuilder();
+  const rule = ninja.rule("generate", {
+    command: "echo 'hi' > $out",
+    out: needs<string>(),
+    [implicitDeps]: ["ruleDeps"],
+    [implicitOut]: "ruleOut",
+    [orderOnlyDeps]: ["ruleOrder1", "ruleOrder2"],
+  });
+
+  rule({ out: "out" });
+  rule({
+    out: "out2",
+    [implicitDeps]: "buildDeps1",
+    [implicitOut]: ["buildOut1", "buildOut2"],
+    [orderOnlyDeps]: "buildOrder1",
+  });
+
+  assert.equal(
+    ninja.output,
+    `rule generate
+  command = echo 'hi' > $out
+build out | ruleOut: generate | ruleDeps || ruleOrder1 ruleOrder2
+build out2 | ruleOut buildOut1 buildOut2: generate | ruleDeps buildDeps1 || ruleOrder1 ruleOrder2 buildOrder1
+`,
+  );
+});

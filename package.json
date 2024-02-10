@@ -4,7 +4,7 @@
   "description": "Configuration script to generate ninja build files for @ninjutsu-build",
   "scripts": {
     "build": "ninja",
-    "bootstrap": "npm install --no-save .builddir/ninjutsu-build-biome.tgz .builddir/ninjutsu-build-core.tgz .builddir/ninjutsu-build-node.tgz .builddir/ninjutsu-build-tsc.tgz"
+    "bootstrap": "npm install --no-save .builddir/ninjutsu-build-bun.tgz .builddir/ninjutsu-build-biome.tgz .builddir/ninjutsu-build-core.tgz .builddir/ninjutsu-build-node.tgz .builddir/ninjutsu-build-tsc.tgz"
   },
   "author": "Elliot Goodrich",
   "license": "MIT",

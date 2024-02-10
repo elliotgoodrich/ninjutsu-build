@@ -37,9 +37,9 @@ rule lint
 rule copy
   command = cp $in $out
   description = Copying $in to $out
-rule swc
-  command = cmd /c npx swc $in -o $out -q $args
-  description = Transpiling $in
+rule buntranspile
+  command = bun build $in --outfile $out $args
+  description = Formatting $in
 build $builddir/.ninjutsu-build/biome/format/configure.mjs: format configure.mjs | ./biome.json || node_modules/.package-lock.json
   cwd = .
   configPath = .
@@ -94,6 +94,33 @@ build $builddir/biome/dist/biome.js: copy packages/biome/dist/biome.js
 build $builddir/biome/dist/biome.d.ts: copy packages/biome/dist/biome.d.ts
 build $builddir/ninjutsu-build-biome.tgz: tar $builddir/biome/README.md $builddir/biome/package.json $builddir/biome/dist/biome.js $builddir/biome/dist/biome.d.ts
   files = biome/README.md biome/package.json biome/dist/biome.js biome/dist/biome.d.ts
+  args = -C $builddir
+
+# packages/bun
+build $builddir/.ninjutsu-build/biome/format/packages/bun/package.json: format packages/bun/package.json | ./biome.json || node_modules/.package-lock.json
+  configPath = .
+  args = 
+build packages/bun/node_modules/.package-lock.json: npmci packages/bun/package.json || $builddir/.ninjutsu-build/biome/format/packages/bun/package.json
+  cwd = packages/bun
+build $builddir/.ninjutsu-build/npmlink/packages/bun/package.json: npmlink packages/bun/package.json | $builddir/ninjutsu-build-core.tgz || $builddir/.ninjutsu-build/biome/format/packages/bun/package.json packages/bun/node_modules/.package-lock.json
+  pkgs = $builddir/ninjutsu-build-core.tgz
+  cwd = packages/bun
+build $builddir/.ninjutsu-build/biome/lint/packages/bun/src/bun.ts: lint packages/bun/src/bun.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/bun/src/bun.ts node_modules/.package-lock.json
+  configPath = .
+  args = 
+build $builddir/.ninjutsu-build/biome/format/packages/bun/src/bun.ts: format packages/bun/src/bun.ts | ./biome.json || packages/bun/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/bun/src/bun.ts
+  cwd = packages/bun
+  configPath = .
+  args = 
+build packages/bun/dist/bun.js | packages/bun/dist/bun.d.ts: tsc packages/bun/src/bun.ts | $builddir/.ninjutsu-build/npmlink/packages/bun/package.json || $builddir/.ninjutsu-build/biome/format/packages/bun/src/bun.ts node_modules/.package-lock.json
+  cwd = packages/bun
+  args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
+build $builddir/bun/README.md: copy packages/bun/README.md
+build $builddir/bun/package.json: copy packages/bun/package.json || $builddir/.ninjutsu-build/biome/format/packages/bun/package.json
+build $builddir/bun/dist/bun.js: copy packages/bun/dist/bun.js
+build $builddir/bun/dist/bun.d.ts: copy packages/bun/dist/bun.d.ts
+build $builddir/ninjutsu-build-bun.tgz: tar $builddir/bun/README.md $builddir/bun/package.json $builddir/bun/dist/bun.js $builddir/bun/dist/bun.d.ts
+  files = bun/README.md bun/package.json bun/dist/bun.js bun/dist/bun.d.ts
   args = -C $builddir
 
 # packages/node
@@ -206,8 +233,8 @@ build $builddir/.ninjutsu-build/biome/format/tests/package.json: format tests/pa
   args = 
 build tests/node_modules/.package-lock.json: npmci tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/package.json
   cwd = tests
-build $builddir/.ninjutsu-build/npmlink/tests/package.json: npmlink tests/package.json | $builddir/ninjutsu-build-core.tgz $builddir/ninjutsu-build-biome.tgz $builddir/ninjutsu-build-node.tgz $builddir/ninjutsu-build-tsc.tgz || $builddir/.ninjutsu-build/biome/format/tests/package.json tests/node_modules/.package-lock.json
-  pkgs = $builddir/ninjutsu-build-core.tgz $builddir/ninjutsu-build-biome.tgz $builddir/ninjutsu-build-node.tgz $builddir/ninjutsu-build-tsc.tgz
+build $builddir/.ninjutsu-build/npmlink/tests/package.json: npmlink tests/package.json | $builddir/ninjutsu-build-core.tgz $builddir/ninjutsu-build-biome.tgz $builddir/ninjutsu-build-bun.tgz $builddir/ninjutsu-build-node.tgz $builddir/ninjutsu-build-tsc.tgz || $builddir/.ninjutsu-build/biome/format/tests/package.json tests/node_modules/.package-lock.json
+  pkgs = $builddir/ninjutsu-build-core.tgz $builddir/ninjutsu-build-biome.tgz $builddir/ninjutsu-build-bun.tgz $builddir/ninjutsu-build-node.tgz $builddir/ninjutsu-build-tsc.tgz
   cwd = tests
 build $builddir/.ninjutsu-build/biome/lint/tests/src/tsc.test.ts: lint tests/src/tsc.test.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts node_modules/.package-lock.json
   configPath = .
@@ -237,20 +264,20 @@ build $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts: format tes
   cwd = tests
   configPath = .
   args = 
-build tests/dist/tsc.test.mjs: swc tests/src/tsc.test.ts || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts |@ $builddir/tests/typechecked.stamp
-  args = -C jsc.target=es2018
+build tests/dist/tsc.test.mjs: buntranspile tests/src/tsc.test.ts | bunfig.toml || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts |@ $builddir/tests/typechecked.stamp
+  args = --target=node --no-bundle
 build tests/dist/tsc.test.mjs.result.txt: test tests/dist/tsc.test.mjs | $builddir/.ninjutsu-build/npmlink/tests/package.json
   args = 
-build tests/dist/node.test.mjs: swc tests/src/node.test.ts || $builddir/.ninjutsu-build/biome/format/tests/src/node.test.ts |@ $builddir/tests/typechecked.stamp
-  args = -C jsc.target=es2018
+build tests/dist/node.test.mjs: buntranspile tests/src/node.test.ts | bunfig.toml || $builddir/.ninjutsu-build/biome/format/tests/src/node.test.ts |@ $builddir/tests/typechecked.stamp
+  args = --target=node --no-bundle
 build tests/dist/node.test.mjs.result.txt: test tests/dist/node.test.mjs | $builddir/.ninjutsu-build/npmlink/tests/package.json
   args = 
-build tests/dist/core.test.mjs: swc tests/src/core.test.ts || $builddir/.ninjutsu-build/biome/format/tests/src/core.test.ts |@ $builddir/tests/typechecked.stamp
-  args = -C jsc.target=es2018
+build tests/dist/core.test.mjs: buntranspile tests/src/core.test.ts | bunfig.toml || $builddir/.ninjutsu-build/biome/format/tests/src/core.test.ts |@ $builddir/tests/typechecked.stamp
+  args = --target=node --no-bundle
 build tests/dist/core.test.mjs.result.txt: test tests/dist/core.test.mjs | $builddir/.ninjutsu-build/npmlink/tests/package.json
   args = 
-build tests/dist/biome.test.mjs: swc tests/src/biome.test.ts || $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts |@ $builddir/tests/typechecked.stamp
-  args = -C jsc.target=es2018
+build tests/dist/biome.test.mjs: buntranspile tests/src/biome.test.ts | bunfig.toml || $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts |@ $builddir/tests/typechecked.stamp
+  args = --target=node --no-bundle
 build tests/dist/biome.test.mjs.result.txt: test tests/dist/biome.test.mjs | $builddir/.ninjutsu-build/npmlink/tests/package.json
   args = 
 build $builddir/tests/typechecked.stamp: typecheck tests/src/tsc.test.ts tests/src/node.test.ts tests/src/core.test.ts tests/src/biome.test.ts | $builddir/.ninjutsu-build/npmlink/tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/node.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/core.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts node_modules/.package-lock.json

@@ -8,6 +8,7 @@ import {
 import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
 import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
+import { makeTranspileRule } from "@ninjutsu-build/bun";
 import { basename, dirname, extname, relative, join } from "node:path/posix";
 import { readFileSync, writeFileSync } from "node:fs";
 import { globSync } from "glob";
@@ -86,13 +87,6 @@ function makeCopyRule(ninja) {
 function makeSWCRule(ninja) {
   return ninja.rule("swc", {
     command: prefix + "npx swc $in -o $out -q $args",
-    description: "Transpiling $in",
-  });
-}
-
-function makeBunRule(ninja) {
-  return ninja.rule("bun", {
-    command: "bun build $in --target node --no-bundle --outfile $out",
     description: "Transpiling $in",
   });
 }
@@ -184,7 +178,10 @@ const lint = addBiomeConfig(
   "./biome.json",
 );
 const copy = makeCopyRule(ninja);
-const transpile = useBun ? makeBunRule(ninja) : makeSWCRule(ninja);
+const transpile = useBun ? makeTranspileRule(ninja) : makeSWCRule(ninja);
+const transpileArgs = useBun
+  ? "--target=node --no-bundle"
+  : "-C jsc.target=es2018";
 
 // TODO: Add a validation that `package.json` is formatted correctly.
 // We need to format after running `npmci` but then formatting the
@@ -329,7 +326,7 @@ ninja.comment("Tests");
         in: t,
         out: "tests/dist/" + basename(file, extname(file)) + ".mjs",
         [validations]: () => typechecked,
-        args: "-C jsc.target=es2018",
+        args: transpileArgs,
       });
       test({
         in: js,

@@ -154,6 +154,9 @@ export type RuleArgs = {
   msvc_deps_prefix?: string;
   rspfile?: string;
   rspfile_content?: string;
+  [implicitDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
 };
 
 /**
@@ -204,14 +207,14 @@ type BuildArgs<
     : never,
 > = {
   out: O;
-} & RequiredArgs<Omit<A, "out">> & {
+} & RequiredArgs<Omit<A, "out" | symbol>> & {
     [implicitDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
     [orderOnlyDeps]?: string | readonly string[];
     [validations]?: (out: O) => string | readonly string[];
     dyndep?: string;
     pool?: string;
-  } & OptionalArgs<Omit<A, "command" | "description">>;
+  } & OptionalArgs<Omit<A, "command" | "description" | symbol>>;
 
 /**
  * Return the input file in the specified `input`, stripped of any
@@ -538,6 +541,12 @@ export class NinjaBuilder {
       }
     }
 
+    const ruleDeps = {
+      [implicitDeps]: variables[implicitDeps],
+      [implicitOut]: variables[implicitOut],
+      [orderOnlyDeps]: variables[orderOnlyDeps],
+    };
+
     return <
       const I extends BuildArgs<A> & {
         in?: Input<string> | readonly Input<string>[];
@@ -557,12 +566,22 @@ export class NinjaBuilder {
       let output =
         "build " +
         concatPaths("", out) +
-        concatPaths(" | ", buildVariables[implicitOut]) +
+        concatPaths(" | ", ruleDeps[implicitOut], buildVariables[implicitOut]) +
         ": " +
         name +
         concatPaths(" ", input) +
-        concatPaths(" | ", extraDeps, buildVariables[implicitDeps]) +
-        concatPaths(" || ", extraOrderDeps, buildVariables[orderOnlyDeps]) +
+        concatPaths(
+          " | ",
+          ruleDeps[implicitDeps],
+          extraDeps,
+          buildVariables[implicitDeps],
+        ) +
+        concatPaths(
+          " || ",
+          ruleDeps[orderOnlyDeps],
+          extraOrderDeps,
+          buildVariables[orderOnlyDeps],
+        ) +
         concatPaths(
           " |@ ",
           buildVariables[validations] === undefined

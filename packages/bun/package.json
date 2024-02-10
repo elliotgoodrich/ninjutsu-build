@@ -1,0 +1,18 @@
+{
+  "name": "@ninjutsu-build/bun",
+  "version": "0.1.0",
+  "description": "A bun plugin for ninjutsu-build",
+  "author": "Elliot Goodrich",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "main": "dist/bun.js",
+  "keywords": ["ninja", "ninja-build", "build", "bun"],
+  "license": "MIT",
+  "peerDependencies": {
+    "@ninjutsu-build/core": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6"
+  }
+}
