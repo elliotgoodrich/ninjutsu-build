@@ -11,6 +11,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.4.0",
     "@ninjutsu-build/biome": "^0.7.0",
+    "@ninjutsu-build/bun": "^0.1.0",
     "@ninjutsu-build/core": "^0.8.1",
     "@ninjutsu-build/node": "^0.8.0",
     "@ninjutsu-build/tsc": "^0.10.0",
