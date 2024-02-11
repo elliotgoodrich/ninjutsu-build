@@ -25,6 +25,7 @@
     "@ninjutsu-build/core": "^0.8.0"
   },
   "devDependencies": {
-    "@types/node": "^20.9.0"
+    "@types/node": "^20.9.0",
+    "@types/which": "^3.0.3"
   }
 }

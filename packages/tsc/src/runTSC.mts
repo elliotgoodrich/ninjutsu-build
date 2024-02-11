@@ -1,8 +1,9 @@
-import { execFile, execSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { argv } from "node:process";
 import { writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, join } from "node:path";
 import { promisify } from "node:util";
+import which from "which";
 
 function parseArgs(args: readonly string[]): {
   depfile?: string;
@@ -63,11 +64,7 @@ async function run(): Promise<void> {
   try {
     const { depfile, touch, out, cwd, tsArgs, input } = parseArgs(argv);
     if (depfile !== undefined) {
-      const tsc = execSync("npm exec which --offline -- tsc", {
-        cwd,
-      })
-        .toString()
-        .trim();
+      const tsc = await which("tsc");
       const files =
         cwd !== undefined
           ? input.map((i) => relative(cwd, i).replaceAll("\\", "/"))
