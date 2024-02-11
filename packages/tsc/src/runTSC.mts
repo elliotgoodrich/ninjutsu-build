@@ -1,9 +1,8 @@
-import { execFile } from "node:child_process";
+import { exec } from "node:child_process";
 import { argv } from "node:process";
 import { writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, join } from "node:path";
 import { promisify } from "node:util";
-import which from "which";
 
 function parseArgs(args: readonly string[]): {
   depfile?: string;
@@ -64,14 +63,13 @@ async function run(): Promise<void> {
   try {
     const { depfile, touch, out, cwd, tsArgs, input } = parseArgs(argv);
     if (depfile !== undefined) {
-      const tsc = await which("tsc");
       const files =
         cwd !== undefined
           ? input.map((i) => relative(cwd, i).replaceAll("\\", "/"))
           : input;
-      const { stdout } = await promisify(execFile)(tsc, tsArgs.concat(files), {
-        cwd,
-      });
+      const { stdout } = await promisify(exec)(
+        `cd ${cwd} && npx tsc ${tsArgs.concat(files).join(" ")}`,
+      );
       const lines = stdout.split("\n");
       const scriptCwd = resolve();
       let deps = out + ":";
