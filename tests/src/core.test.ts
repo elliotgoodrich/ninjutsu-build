@@ -205,9 +205,10 @@ build b c: test a
     const ninja = new NinjaBuilder();
     const inManyOutOne = ninja.rule("test", {
       out: needs<string>(),
-      in: needs<Input<readonly string[]>>(),
+      in: needs<readonly Input<string>[]>(),
       command: "in-many-out-1",
     });
+
     const out: "c" = inManyOutOne({ out: "c", in: ["a", "b"] });
     assert.equal(out, "c");
     assert.equal(

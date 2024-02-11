@@ -124,7 +124,7 @@ test("makeTypeCheckRule", () => {
   assert.equal(
     ninja.output,
     `rule typecheck
-  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFilesOnly $args -- $in
+  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in
   description = Typechecking $in
   depfile = $out.depfile
   deps = gcc

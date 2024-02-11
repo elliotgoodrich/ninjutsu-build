@@ -16,7 +16,7 @@ rule tsc
   depfile = $out.depfile
   deps = gcc
 rule typecheck
-  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFilesOnly $args -- $in
+  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in
   description = Typechecking $in
   depfile = $out.depfile
   deps = gcc
@@ -38,8 +38,8 @@ rule copy
   command = cp $in $out
   description = Copying $in to $out
 rule buntranspile
-  command = bun build $in --outfile $out $args
-  description = Formatting $in
+  command = bun build $in --outfile $out --no-bundle $args
+  description = Transpiling $in
 build $builddir/.ninjutsu-build/biome/format/configure.mjs: format configure.mjs | ./biome.json || node_modules/.package-lock.json
   cwd = .
   configPath = .
