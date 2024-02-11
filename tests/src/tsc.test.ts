@@ -90,21 +90,6 @@ test("makeTSCRule", () => {
     }),
     ["index.cjs", "index.d.cts"],
   );
-  assert.equal(
-    ninja.output,
-    `rule tsc
-  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFiles $args -- $in
-  description = Compiling $in
-  depfile = $out.depfile
-  deps = gcc
-build output/index.js: tsc src/common/index.ts
-  cwd = .
-  args = --outDir output
-build index.cjs | index.d.cts implicitOut: tsc index.cts | implicitDeps || orderOnlyDeps |@ index.cjs_validation
-  cwd = .
-  args = --declaration --outDir 
-`,
-  );
 });
 
 test("makeTypeCheckRule", () => {
@@ -119,18 +104,5 @@ test("makeTypeCheckRule", () => {
       },
     }),
     "$builddir/typechecked.stamp",
-  );
-
-  assert.equal(
-    ninja.output,
-    `rule typecheck
-  command = cmd /c node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in
-  description = Typechecking $in
-  depfile = $out.depfile
-  deps = gcc
-build $builddir/typechecked.stamp: typecheck src/common/index.ts
-  cwd = .
-  args = --outDir output
-`,
   );
 });

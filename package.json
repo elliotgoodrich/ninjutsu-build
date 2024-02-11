@@ -14,7 +14,7 @@
     "@ninjutsu-build/bun": "^0.1.0",
     "@ninjutsu-build/core": "^0.8.1",
     "@ninjutsu-build/node": "^0.8.0",
-    "@ninjutsu-build/tsc": "^0.10.0",
+    "@ninjutsu-build/tsc": "^0.10.3",
     "@types/toposort": "^2.0.7",
     "glob": "^10.3.10",
     "swc": "^1.0.11",
