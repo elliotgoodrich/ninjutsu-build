@@ -109,12 +109,11 @@ writeFileSync("build.ninja", ninja.output);
 
 ### Setup
 
-  1. Install `node` (>20)
+  1. Install `node` (>18)
   2. Install `ninja` (>1.11)
   3. `npm ci`
-  4. `node configure.mjs` (`node configure.mjs --bun` to use `bun` instead of `swc` for transpiling)
+  4. `npm run configure` (`npm run configure -- --bun` to use `bun` instead of `swc` for transpiling)
 
 ### Building + linting + formatting + tests
 
   1. `ninja`
-
