@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/core",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Easily create ninja build files with this TypeScript library (https://ninja-build.org/)",
   "author": "Elliot Goodrich",
   "engines": {
@@ -9,6 +9,15 @@
   "main": "dist/core.js",
   "keywords": ["ninja", "ninja-build", "build"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/elliotgoodrich/ninjutsu-build",
+  "bugs": {
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
+  },
   "devDependencies": {
     "typescript": "^5.2.2"
   }
