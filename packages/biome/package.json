@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/biome",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A biome plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
   "engines": {
@@ -9,6 +9,15 @@
   "main": "dist/biome.js",
   "keywords": ["ninja", "ninja-build", "build", "biome"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build.git",
+    "directory": "packages/biome"
+  },
+  "homepage": "https://github.com/elliotgoodrich/ninjutsu-build",
+  "bugs": {
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
+  },
   "peerDependencies": {
     "@biomejs/biome": "1.x",
     "@ninjutsu-build/core": "^0.8.0"

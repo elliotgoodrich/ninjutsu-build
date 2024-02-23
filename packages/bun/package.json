@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/bun",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A bun plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
   "engines": {
@@ -9,6 +9,15 @@
   "main": "dist/bun.js",
   "keywords": ["ninja", "ninja-build", "build", "bun"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build.git",
+    "directory": "packages/bun"
+  },
+  "homepage": "https://github.com/elliotgoodrich/ninjutsu-build",
+  "bugs": {
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
+  },
   "peerDependencies": {
     "@ninjutsu-build/core": "^0.8.2"
   },
