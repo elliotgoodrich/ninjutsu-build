@@ -315,46 +315,29 @@ ninja.comment("Tests");
     formatAndLint(cwd, file, { [orderOnlyDeps]: [dependenciesInstalled] }),
   );
 
-  const typechecked = "$builddir/tests/typechecked.stamp";
-
-  // Transpile and run each test individually and return all of them in
-  // a format that can be passed to `typecheck`.
-  const toTypeCheck = tests.reduce(
-    (acc, t) => {
-      const file = getInput(t);
-      const js = transpile({
-        in: t,
-        out: "tests/dist/" + basename(file, extname(file)) + ".mjs",
-        [validations]: () => typechecked,
-        args: transpileArgs,
-      });
-      test({
-        in: js,
-        out: `${js}.result.txt`,
-        [implicitDeps]: [linked],
-      });
-
-      // TODO: `typecheck` should accept a wider format to
-      // avoid this transformation.
-      acc.file.push(file);
-      if (t[orderOnlyDeps]) {
-        acc[orderOnlyDeps].push(t[orderOnlyDeps]);
-      }
-      if (t[implicitDeps]) {
-        acc[implicitDeps].push(t[implicitDeps]);
-      }
-      return acc;
-    },
-    { file: [], [orderOnlyDeps]: [], [implicitDeps]: [] },
-  );
-
-  typecheck({
-    in: toTypeCheck,
-    out: typechecked,
+  const typechecked = typecheck({
+    in: tests,
+    out: "$builddir/tests/typechecked.stamp",
     compilerOptions,
     cwd,
     [implicitDeps]: [linked],
   });
+
+  // Transpile and run each test individually
+  for (const t of tests) {
+    const file = getInput(t);
+    const js = transpile({
+      in: t,
+      out: "tests/dist/" + basename(file, extname(file)) + ".mjs",
+      [validations]: () => typechecked,
+      args: transpileArgs,
+    });
+    test({
+      in: js,
+      out: `${js}.result.txt`,
+      [implicitDeps]: [linked],
+    });
+  }
 }
 
 writeFileSync("build.ninja", ninja.output);

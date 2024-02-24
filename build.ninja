@@ -264,6 +264,9 @@ build $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts: format tes
   cwd = tests
   configPath = .
   args = 
+build $builddir/tests/typechecked.stamp: typecheck tests/src/tsc.test.ts tests/src/node.test.ts tests/src/core.test.ts tests/src/biome.test.ts | $builddir/.ninjutsu-build/npmlink/tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/node.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/core.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts node_modules/.package-lock.json
+  cwd = tests
+  args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
 build tests/dist/tsc.test.mjs: buntranspile tests/src/tsc.test.ts | bunfig.toml || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts |@ $builddir/tests/typechecked.stamp
   args = --target=node --no-bundle
 build tests/dist/tsc.test.mjs.result.txt: test tests/dist/tsc.test.mjs | $builddir/.ninjutsu-build/npmlink/tests/package.json
@@ -280,6 +283,3 @@ build tests/dist/biome.test.mjs: buntranspile tests/src/biome.test.ts | bunfig.t
   args = --target=node --no-bundle
 build tests/dist/biome.test.mjs.result.txt: test tests/dist/biome.test.mjs | $builddir/.ninjutsu-build/npmlink/tests/package.json
   args = 
-build $builddir/tests/typechecked.stamp: typecheck tests/src/tsc.test.ts tests/src/node.test.ts tests/src/core.test.ts tests/src/biome.test.ts | $builddir/.ninjutsu-build/npmlink/tests/package.json || $builddir/.ninjutsu-build/biome/format/tests/src/tsc.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/node.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/core.test.ts $builddir/.ninjutsu-build/biome/format/tests/src/biome.test.ts node_modules/.package-lock.json
-  cwd = tests
-  args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck
