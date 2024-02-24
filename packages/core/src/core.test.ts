@@ -14,7 +14,7 @@ import {
   implicitDeps,
   validations,
   implicitOut,
-} from "@ninjutsu-build/core";
+} from "./core.js";
 
 test("console", () => {
   assert.equal(console, "console");

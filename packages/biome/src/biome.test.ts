@@ -1,6 +1,6 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
-import { makeLintRule, makeFormatRule } from "@ninjutsu-build/biome";
+import { makeLintRule, makeFormatRule } from "./biome.js";
 import { NinjaBuilder, orderOnlyDeps } from "@ninjutsu-build/core";
 
 test("makeLintRule", () => {

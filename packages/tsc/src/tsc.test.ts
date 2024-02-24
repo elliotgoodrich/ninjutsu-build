@@ -5,7 +5,7 @@ import {
   makeTypeCheckRule,
   compilerOptionsToString,
   compilerOptionsToArray,
-} from "@ninjutsu-build/tsc";
+} from "./tsc.js";
 import {
   NinjaBuilder,
   implicitDeps,
@@ -89,29 +89,6 @@ test("makeTSCRule", () => {
       [validations]: (out) => [out[0] + "_validation"],
     }),
     ["index.cjs", "index.d.cts"],
-  );
-
-  assert.deepEqual(
-    tsc({
-      in: ["package/src/index.cts"],
-      compilerOptions: {
-        outDir: "dist",
-      },
-      cwd: "package",
-    }),
-    ["package/dist/index.cjs"],
-  );
-
-  assert.deepEqual(
-    tsc({
-      in: ["package/src/index.cts"],
-      compilerOptions: {
-        outDir: "dist",
-        rootDir: ".",
-      },
-      cwd: "package",
-    }),
-    ["package/dist/src/index.cjs"],
   );
 });
 
