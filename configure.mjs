@@ -189,155 +189,143 @@ const transpileArgs = useBun
 
 format({ in: "configure.mjs", cwd: "." });
 
-// Return an array of all tgz files for our packages
-const tars = (() => {
-  const scope = "@ninjutsu-build/";
-  const graph = {};
-  return toposort(
-    globSync("*", { posix: true, cwd: "packages" }).flatMap((packageName) => {
-      const packageJSON = JSON.parse(
-        readFileSync(join("packages", packageName, "package.json")).toString(),
-      );
-      const deps = {
-        ...packageJSON.dependencies,
-        ...packageJSON.devDependencies,
-        ...packageJSON.peerDependencies,
-      };
-      graph[packageName] = Object.keys(deps)
-        .filter((dep) => dep.startsWith(scope))
-        .map((dep) => dep.substring(scope.length));
-      return graph[packageName].map((dep) => [packageName, dep]);
-    }),
-  )
-    .reverse()
-    .reduce((packages, packageName) => {
-      // Collect all the generated JavaScript tgz packages
-      // Go through all of the packages
-      ninja.output += "\n";
+const scope = "@ninjutsu-build/";
+const graph = {};
+toposort(
+  globSync("*", { posix: true, cwd: "packages" }).flatMap((packageName) => {
+    const packageJSON = JSON.parse(
+      readFileSync(join("packages", packageName, "package.json")).toString(),
+    );
+    const deps = {
+      ...packageJSON.dependencies,
+      ...packageJSON.devDependencies,
+      ...packageJSON.peerDependencies,
+    };
+    graph[packageName] = Object.keys(deps)
+      .filter((dep) => dep.startsWith(scope))
+      .map((dep) => dep.substring(scope.length));
+    return graph[packageName].map((dep) => [packageName, dep]);
+  }),
+)
+  .reverse()
+  .reduce((packages, packageName) => {
+    // Collect all the generated JavaScript tgz packages
+    ninja.output += "\n";
 
-      const cwd = join("packages", packageName);
-      ninja.comment(cwd);
+    const cwd = join("packages", packageName);
+    ninja.comment(cwd);
 
-      // Format package.json
-      const packageJSON = format({ in: join(cwd, "package.json") });
+    // Format package.json
+    const packageJSON = format({ in: join(cwd, "package.json") });
 
-      // Run `npm ci`
-      const dependenciesInstalled = ci({ in: packageJSON });
+    // Run `npm ci`
+    const dependenciesInstalled = ci({ in: packageJSON });
 
-      // If `packageJSON` is changed (and only after we have run `npm ci`)
-      // install our packages locally
-      const pkgs = graph[packageName].map((name) => packages[name]);
-      const linked =
-        pkgs.length > 0
-          ? link({
-              in: packageJSON,
-              pkgs,
-              [orderOnlyDeps]: [dependenciesInstalled],
-            })
-          : dependenciesInstalled;
+    // If `packageJSON` is changed (and only after we have run `npm ci`)
+    // install our packages locally
+    const pkgs = graph[packageName].map((name) => packages[name]);
+    const linked =
+      pkgs.length > 0
+        ? link({
+            in: packageJSON,
+            pkgs,
+            [orderOnlyDeps]: [dependenciesInstalled],
+          })
+        : dependenciesInstalled;
 
-      // Format `file` and then run `lint` as a validation step with a
-      // order-only dependency on formatting finishing for that file. Make sure that
-      // we start only after biome have been installed.
-      const f = (file) =>
-        formatAndLint(cwd, file, {
-          [orderOnlyDeps]: [dependenciesInstalled],
-        });
-
-      // Grab all TypeScript source files and format them
-      const ts = globSync(join(cwd, "src", "*.*"), { posix: true }).map(f);
-
-      // In the `lib` directory we have JavaScript files and TS declaration files
-      const lib = globSync(join(cwd, "lib", "*.*"), {
-        posix: true,
-      }).map(f);
-
-      // Transpile the TypeScript into JavaScript once formatting has finished
-      const dist = tsc({
-        in: ts,
-        compilerOptions,
-        cwd,
-        // We must use `implicitDeps` instead of `orderOnlyDeps` as the `npmci` and
-        // `npmlink` rules do not yet use `dyndeps` to describe what files they
-        // creates in `node_modules`
-        [implicitDeps]: [linked],
+    // Format `file` and then run `lint` as a validation step with a
+    // order-only dependency on formatting finishing for that file. Make sure that
+    // we start only after biome have been installed.
+    const f = (file) =>
+      formatAndLint(cwd, file, {
+        [orderOnlyDeps]: [dependenciesInstalled],
       });
 
-      // Prepare our files to create a tgz of our package, include
-      //   - README.md
-      //   - package.json
-      //   - contents of `lib`
-      //   - contents of `dist`
-      const stageForTar = (args) => {
-        const { in: _in, ...rest } = args;
-        return copy({
-          in: _in,
-          out: `$builddir/${packageName}/${relative(cwd, getInput(_in))}`,
-          ...rest,
-        });
-      };
-      let toPack = [];
-      toPack.push(stageForTar({ in: join(cwd, "README.md") }));
-      toPack.push(stageForTar({ in: packageJSON }));
-      toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
-      toPack = toPack.concat(lib.map((file) => stageForTar({ in: file })));
+    // Grab all TypeScript source files and format them
+    const ts = globSync(join(cwd, "src", "*.ts"), {
+      posix: true,
+      ignore: { ignored: (f) => f.name.endsWith(".test.ts") },
+    }).map(f);
 
-      return Object.assign({}, packages, {
-        [packageName]: tar({
-          out: `$builddir/ninjutsu-build-${packageName}.tgz`,
-          in: toPack,
-          dir: "$builddir",
-        }),
-      });
-    }, {});
-})();
+    // In the `lib` directory we have JavaScript files and TS declaration files
+    const lib = globSync(join(cwd, "lib", "*.*"), {
+      posix: true,
+    }).map(f);
 
-ninja.output += "\n";
-ninja.comment("Tests");
-
-{
-  const cwd = "tests";
-
-  // Format tests/package.json
-  const packageJSON = format({ in: join(cwd, "package.json") });
-
-  // Run `npm ci`
-  const dependenciesInstalled = ci({ in: packageJSON });
-
-  const linked = link({
-    in: packageJSON,
-    pkgs: Object.values(tars),
-    [orderOnlyDeps]: [dependenciesInstalled],
-  });
-
-  // Grab all TypeScript source files and format them
-  const tests = globSync("tests/src/*.*", { posix: true }).map((file) =>
-    formatAndLint(cwd, file, { [orderOnlyDeps]: [dependenciesInstalled] }),
-  );
-
-  const typechecked = typecheck({
-    in: tests,
-    out: "$builddir/tests/typechecked.stamp",
-    compilerOptions,
-    cwd,
-    [implicitDeps]: [linked],
-  });
-
-  // Transpile and run each test individually
-  for (const t of tests) {
-    const file = getInput(t);
-    const js = transpile({
-      in: t,
-      out: "tests/dist/" + basename(file, extname(file)) + ".mjs",
-      [validations]: () => typechecked,
-      args: transpileArgs,
-    });
-    test({
-      in: js,
-      out: `${js}.result.txt`,
+    // Transpile the TypeScript into JavaScript once formatting has finished
+    const dist = tsc({
+      in: ts,
+      compilerOptions: { ...compilerOptions, rootDir: "src" },
+      cwd,
+      // We must use `implicitDeps` instead of `orderOnlyDeps` as the `npmci` and
+      // `npmlink` rules do not yet use `dyndeps` to describe what files they
+      // creates in `node_modules`
       [implicitDeps]: [linked],
     });
-  }
-}
+
+    // Grab all TypeScript tests files and format them
+    const tests = globSync(join(cwd, "src", "*.test.ts"), {
+      posix: true,
+    }).map(f);
+
+    // Type check all the tests
+    if (tests.length !== 0) {
+      const typechecked = typecheck({
+        in: tests,
+        out: join(cwd, "dist", "typechecked.stamp"),
+        compilerOptions,
+        cwd,
+        [implicitDeps]: [linked],
+        // Only run this after generating all the TypeScript definition files for the
+        // library files.
+        [orderOnlyDeps]: dist,
+      });
+
+      // Individually transpile and run each test
+      for (const t of tests) {
+        const file = getInput(t);
+        const js = transpile({
+          in: t,
+          out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
+          [validations]: () => typechecked,
+          args: transpileArgs,
+        });
+        test({
+          in: js,
+          out: join("$builddir", packageName, `${js}.result.txt`),
+          [implicitDeps]: [linked],
+          // Only run this after transpiling the library from TS to JS
+          [orderOnlyDeps]: dist,
+        });
+      }
+    }
+
+    // Prepare our files to create a tgz of our package, include
+    //   - README.md
+    //   - package.json
+    //   - contents of `lib`
+    //   - contents of `dist`
+    const stageForTar = (args) => {
+      const { in: _in, ...rest } = args;
+      return copy({
+        in: _in,
+        out: `$builddir/${packageName}/${relative(cwd, getInput(_in))}`,
+        ...rest,
+      });
+    };
+    let toPack = [];
+    toPack.push(stageForTar({ in: join(cwd, "README.md") }));
+    toPack.push(stageForTar({ in: packageJSON }));
+    toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
+    toPack = toPack.concat(lib.map((file) => stageForTar({ in: file })));
+
+    return Object.assign({}, packages, {
+      [packageName]: tar({
+        out: `$builddir/ninjutsu-build-${packageName}.tgz`,
+        in: toPack,
+        dir: "$builddir",
+      }),
+    });
+  }, {});
 
 writeFileSync("build.ninja", ninja.output);

@@ -1,7 +1,7 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
 import { NinjaBuilder, implicitDeps } from "@ninjutsu-build/core";
-import { makeNodeRule, makeNodeTestRule } from "@ninjutsu-build/node";
+import { makeNodeRule, makeNodeTestRule } from "./node.js";
 
 test("makeNodeRule", () => {
   const ninja = new NinjaBuilder();
