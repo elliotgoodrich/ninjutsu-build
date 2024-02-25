@@ -16,7 +16,8 @@ import type {
 } from "typescript";
 import ts from "typescript";
 import { platform } from "os";
-import { join } from "path";
+import { join } from "node:path";
+import { relative } from "node:path/posix";
 
 function compilerOptionToArray(
   name: string,
@@ -249,8 +250,9 @@ export function makeTSCRule(
       [implicitOut]: _implicitOut = [],
       ...rest
     } = a;
+    const input = getInputs(a.in).map((f) => relative(cwd, f));
     const argsArr = compilerOptionsToArray(compilerOptions);
-    const commandLine = ts.parseCommandLine(getInputs(a.in).concat(argsArr));
+    const commandLine = ts.parseCommandLine(input.concat(argsArr));
 
     // We need to set this to something, else we get a debug exception
     // in `getOutputFileNames`
