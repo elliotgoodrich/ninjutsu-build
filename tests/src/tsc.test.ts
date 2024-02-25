@@ -90,6 +90,29 @@ test("makeTSCRule", () => {
     }),
     ["index.cjs", "index.d.cts"],
   );
+
+  assert.deepEqual(
+    tsc({
+      in: ["package/src/index.cts"],
+      compilerOptions: {
+        outDir: "dist",
+      },
+      cwd: "package",
+    }),
+    ["package/dist/index.cjs"],
+  );
+
+  assert.deepEqual(
+    tsc({
+      in: ["package/src/index.cts"],
+      compilerOptions: {
+        outDir: "dist",
+        rootDir: ".",
+      },
+      cwd: "package",
+    }),
+    ["package/dist/src/index.cjs"],
+  );
 });
 
 test("makeTypeCheckRule", () => {
