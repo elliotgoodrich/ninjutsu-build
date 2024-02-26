@@ -1,8 +1,11 @@
 {
   "name": "@ninjutsu-build/bun",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A bun plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
+  "scripts": {
+    "test": "ninja bun -C ../.."
+  },
   "engines": {
     "node": ">=18.0.0"
   },

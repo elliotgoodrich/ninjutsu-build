@@ -82,6 +82,7 @@ build $builddir/core/dist/core.d.ts: copy packages/core/dist/core.d.ts
 build $builddir/ninjutsu-build-core.tgz: tar $builddir/core/README.md $builddir/core/package.json $builddir/core/dist/core.js $builddir/core/dist/core.d.ts
   files = core/README.md core/package.json core/dist/core.js core/dist/core.d.ts
   args = -C $builddir
+build core: phony $builddir/ninjutsu-build-core.tgz $builddir/core/packages/core/dist/core.test.mjs.result.txt
 
 # packages/biome
 build $builddir/.ninjutsu-build/biome/format/packages/biome/package.json: format packages/biome/package.json | ./biome.json || node_modules/.package-lock.json
@@ -123,6 +124,7 @@ build $builddir/biome/dist/biome.d.ts: copy packages/biome/dist/biome.d.ts
 build $builddir/ninjutsu-build-biome.tgz: tar $builddir/biome/README.md $builddir/biome/package.json $builddir/biome/dist/biome.js $builddir/biome/dist/biome.d.ts
   files = biome/README.md biome/package.json biome/dist/biome.js biome/dist/biome.d.ts
   args = -C $builddir
+build biome: phony $builddir/ninjutsu-build-biome.tgz $builddir/biome/packages/biome/dist/biome.test.mjs.result.txt
 
 # packages/bun
 build $builddir/.ninjutsu-build/biome/format/packages/bun/package.json: format packages/bun/package.json | ./biome.json || node_modules/.package-lock.json
@@ -150,6 +152,7 @@ build $builddir/bun/dist/bun.d.ts: copy packages/bun/dist/bun.d.ts
 build $builddir/ninjutsu-build-bun.tgz: tar $builddir/bun/README.md $builddir/bun/package.json $builddir/bun/dist/bun.js $builddir/bun/dist/bun.d.ts
   files = bun/README.md bun/package.json bun/dist/bun.js bun/dist/bun.d.ts
   args = -C $builddir
+build bun: phony $builddir/ninjutsu-build-bun.tgz
 
 # packages/node
 build $builddir/.ninjutsu-build/biome/format/packages/node/package.json: format packages/node/package.json | ./biome.json || node_modules/.package-lock.json
@@ -232,6 +235,7 @@ build $builddir/node/lib/file.cjs: copy packages/node/lib/file.cjs || $builddir/
 build $builddir/ninjutsu-build-node.tgz: tar $builddir/node/README.md $builddir/node/package.json $builddir/node/dist/node.js $builddir/node/dist/node.d.ts $builddir/node/dist/makeDepfile.js $builddir/node/dist/makeDepfile.d.ts $builddir/node/lib/testReporter.mjs $builddir/node/lib/hookRequire.cjs $builddir/node/lib/file.d.cts $builddir/node/lib/file.cjs
   files = node/README.md node/package.json node/dist/node.js node/dist/node.d.ts node/dist/makeDepfile.js node/dist/makeDepfile.d.ts node/lib/testReporter.mjs node/lib/hookRequire.cjs node/lib/file.d.cts node/lib/file.cjs
   args = -C $builddir
+build node: phony $builddir/ninjutsu-build-node.tgz $builddir/node/packages/node/dist/node.test.mjs.result.txt
 
 # packages/tsc
 build $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json: format packages/tsc/package.json | ./biome.json || node_modules/.package-lock.json
@@ -273,3 +277,4 @@ build $builddir/tsc/dist/tsc.d.ts: copy packages/tsc/dist/tsc.d.ts
 build $builddir/ninjutsu-build-tsc.tgz: tar $builddir/tsc/README.md $builddir/tsc/package.json $builddir/tsc/dist/tsc.js $builddir/tsc/dist/tsc.d.ts
   files = tsc/README.md tsc/package.json tsc/dist/tsc.js tsc/dist/tsc.d.ts
   args = -C $builddir
+build tsc: phony $builddir/ninjutsu-build-tsc.tgz $builddir/tsc/packages/tsc/dist/tsc.test.mjs.result.txt

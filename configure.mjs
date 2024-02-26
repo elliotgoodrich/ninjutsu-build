@@ -183,6 +183,8 @@ const transpileArgs = useBun
   ? "--target=node --no-bundle"
   : "-C jsc.target=es2018";
 
+const { phony } = ninja;
+
 // TODO: Add a validation that `package.json` is formatted correctly.
 // We need to format after running `npmci` but then formatting the
 // file will cause us to rerun `npmci` again
@@ -269,36 +271,40 @@ toposort(
     }).map(f);
 
     // Type check all the tests
-    if (tests.length !== 0) {
-      const typechecked = typecheck({
-        in: tests,
-        out: join(cwd, "dist", "typechecked.stamp"),
-        compilerOptions,
-        cwd,
-        [implicitDeps]: [linked],
-        // Only run this after generating all the TypeScript definition files for the
-        // library files.
-        [orderOnlyDeps]: dist,
-      });
-
-      // Individually transpile and run each test
-      for (const t of tests) {
-        const file = getInput(t);
-        const js = transpile({
-          in: t,
-          out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
-          [validations]: () => typechecked,
-          args: transpileArgs,
-        });
-        test({
-          in: js,
-          out: join("$builddir", packageName, `${js}.result.txt`),
+    const testTargets = (() => {
+      if (tests.length !== 0) {
+        const typechecked = typecheck({
+          in: tests,
+          out: join(cwd, "dist", "typechecked.stamp"),
+          compilerOptions,
+          cwd,
           [implicitDeps]: [linked],
-          // Only run this after transpiling the library from TS to JS
+          // Only run this after generating all the TypeScript definition files for the
+          // library files.
           [orderOnlyDeps]: dist,
         });
+
+        // Individually transpile and run each test
+        return tests.map((t) => {
+          const file = getInput(t);
+          const js = transpile({
+            in: t,
+            out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
+            [validations]: () => typechecked,
+            args: transpileArgs,
+          });
+          return test({
+            in: js,
+            out: join("$builddir", packageName, `${js}.result.txt`),
+            [implicitDeps]: [linked],
+            // Only run this after transpiling the library from TS to JS
+            [orderOnlyDeps]: dist,
+          });
+        });
+      } else {
+        return [];
       }
-    }
+    })();
 
     // Prepare our files to create a tgz of our package, include
     //   - README.md
@@ -319,12 +325,14 @@ toposort(
     toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
     toPack = toPack.concat(lib.map((file) => stageForTar({ in: file })));
 
+    const createTar = tar({
+      out: `$builddir/ninjutsu-build-${packageName}.tgz`,
+      in: toPack,
+      dir: "$builddir",
+    });
+    phony({ out: packageName, in: [createTar, ...testTargets] });
     return Object.assign({}, packages, {
-      [packageName]: tar({
-        out: `$builddir/ninjutsu-build-${packageName}.tgz`,
-        in: toPack,
-        dir: "$builddir",
-      }),
+      [packageName]: createTar,
     });
   }, {});
 

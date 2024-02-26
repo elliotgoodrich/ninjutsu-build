@@ -1,8 +1,11 @@
 {
   "name": "@ninjutsu-build/node",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "A ninjutsu-build plugin to generate ninja rules to execute JavaScript with node",
   "author": "Elliot Goodrich",
+  "scripts": {
+    "test": "ninja node -C ../.."
+  },
   "engines": {
     "node": ">=18.18.0"
   },
