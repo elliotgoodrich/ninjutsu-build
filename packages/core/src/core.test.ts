@@ -146,10 +146,18 @@ test("phony rule", () => {
   const out2: "my:: alia$ !" = phony({ out: "my:: alia$ !", in: "file$ .txt" });
   assert.equal(out2, "my:: alia$ !");
 
+  const out3: "all" = phony({ out: "all", in: ["in1", "in2"] });
+  assert.equal(out3, "all");
+
+  const out4: "none" = phony({ out: "none", in: [] });
+  assert.equal(out4, "none");
+
   assert.equal(
     ninja.output,
     `build alias: phony file.txt
 build my$:$:$ alia$$ !: phony file$$ .txt
+build all: phony in1 in2
+build none: phony
 `,
   );
 });

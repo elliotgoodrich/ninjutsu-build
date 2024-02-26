@@ -398,13 +398,19 @@ export class NinjaBuilder {
    * ninja.default(foo, mybar);
    * ```
    */
-  get phony(): <O extends string>(args: { out: O; in: string }) => O {
-    return <O extends string>(args: { out: O; in: string }): O => {
+  get phony(): <O extends string>(args: {
+    out: O;
+    in: string | readonly string[];
+  }) => O {
+    return <O extends string>(args: {
+      out: O;
+      in: string | readonly string[];
+    }): O => {
       this.output +=
         "build " +
         escapePath(args.out) +
-        ": phony " +
-        escapePath(args.in) +
+        ": phony" +
+        concatPaths(" ", args.in) +
         "\n";
       return args.out;
     };
