@@ -22,8 +22,8 @@ const importCode =
 // we mention `node.exe` with the file extension to avoid the `winpty node` alias.
 const node = platform() === "win32" ? "cmd /c node.exe" : "node";
 
-const command = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" $args $in > $out`;
-const testCommand = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" --test --test-reporter=${testReporter} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $in`;
+const command = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" $nodeArgs $in -- $args > $out`;
+const testCommand = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" --test --test-reporter=${testReporter} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $nodeArgs $in -- $args`;
 
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
@@ -61,6 +61,7 @@ export function makeNodeRule(
   in: Input<string>;
   out: O;
   args?: string;
+  nodeArgs?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: string | readonly string[];
   [implicitOut]?: string | readonly string[];
@@ -74,6 +75,7 @@ export function makeNodeRule(
     depfile: "$out.depfile",
     deps: "gcc",
     args: "",
+    nodeArgs: "",
   });
 }
 
@@ -114,6 +116,7 @@ export function makeNodeTestRule(
   in: Input<string>;
   out: O;
   args?: string;
+  nodeArgs?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: string | readonly string[];
   [implicitOut]?: string | readonly string[];
@@ -127,5 +130,6 @@ export function makeNodeTestRule(
     depfile: "$out.depfile",
     deps: "gcc",
     args: "",
+    nodeArgs: "",
   });
 }
