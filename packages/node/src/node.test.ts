@@ -12,6 +12,7 @@ test("makeNodeRule", () => {
   const out2: "out2.txt" = myNode({
     out: "out2.txt",
     in: "in.js",
+    nodeArgs: "--allow-worker",
     args: "--foo",
     [implicitDeps]: ["other"],
   });
