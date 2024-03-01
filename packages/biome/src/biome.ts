@@ -34,6 +34,12 @@ const biomeCommand = join(
  * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
  * `args` property exists to pass in any additional options to the CLI.
  *
+ * This rule is preferred when running over source files that are written by developers.
+ * If you wish to format generated code that is the output of another build edge, then the
+ * {@link makeFormatToRule} is preferred since `makeFormatRule` will overwrite the
+ * generated file and cause `ninja` to view that file as dirty - causing it to be built every
+ * file `ninja` is run.
+ *
  * For example the following will format all test files in the `tests` directory and
  * then run the test file afterwards.  This uses ninja's order-only dependencies to make
  * sure that formatting always occurs before running the test.
@@ -41,12 +47,12 @@ const biomeCommand = join(
  * ```ts
  * import { NinjaBuilder } from "@ninjutsu-build/core";
  * import { makeFormatRule } from "@ninjutsu-build/biome";
- * import { makeNodeRule } from "@ninjutsu-build/node";
+ * import { makeNodeTestRule } from "@ninjutsu-build/node";
  * import { globSync } from "glob";
  *
  * const ninja = new NinjaBuilder();
  * const format = makeFormatRule(ninja);
- * const node = makeNodeRule(ninja);
+ * const test = makeNodeTestRule(ninja);
  *
  * globSync("tests/*.test.js", { posix: true }).forEach((test) => {
  *   const formatted = format({
@@ -54,9 +60,9 @@ const biomeCommand = join(
  *     configPath: "biome.json",
  *     args: "--no-errors-on-unmatched",
  *   });
- *   node({
+ *   test({
  *     in: formatted,
- *     args: "--test",
+ *     out: getInput(formatted) + ".txt",
  *   })
  * });
  *
@@ -126,12 +132,90 @@ export function makeFormatRule(
           };
     format({
       out: result[orderOnlyDeps],
-      ...rest,
       configPath: dirname(configPath),
+      ...rest,
       [implicitDeps]: _implicitDeps.concat(a.configPath),
       ...validation,
     });
     return result;
+  };
+}
+
+/**
+ * Create a rule in the specified `ninja` builder with the specified `name` that will
+ * run `biome format` on the input file and save the output to the specified file. The
+ * returned function returns the `out` parameter passed in.
+ *
+ * The returned function takes a `configPath` property, which is the path to the
+ * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
+ * `args` property exists to pass in any additional options to the CLI.
+ *
+ * The example below shows both `makeFormatRule` and `makeFormatToRule` and when each
+ * is appropriate.
+ *
+ * ```ts
+ * import { NinjaBuilder, needs, type Input } from "@ninjutsu-build/core";
+ * import { makeFormatRule, makeFormatToRule } from "@ninjutsu-build/biome";
+ * import { makeNodeRule } from "@ninjutsu-build/node";
+ *
+ * const ninja = new NinjaBuilder();
+ * const format = makeFormatRule(ninja);
+ * const formatTo = makeFormatToRule(ninja);
+ * const node = makeNodeRule(ninja);
+ *
+ * const generatorJS = format({ in: "makeCode.js" });
+ * const tmpOutputJS = node({
+ *   in: generatorJS,
+ *   out: "$builddir/generated.js",
+ * });
+ * const outputJS = formatTo({
+ *   in: tmpOutputJS,
+ *   out: "gen/generated.js"
+ * });
+ *
+ * writeFileSync("build.ninja", ninja.output);
+ * ```
+ */
+export function makeFormatToRule(
+  ninja: NinjaBuilder,
+  name = "formatTo",
+): <O extends string>(args: {
+  in: Input<string>;
+  out: O;
+  configPath: string;
+  args?: string;
+  [implicitDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
+  [validations]?: (out: string) => string | readonly string[];
+}) => O {
+  const formatTo = ninja.rule(name, {
+    command:
+      prefix +
+      join("node_modules", biomeCommand) +
+      " format $args --config-path $configPath > $out",
+    description: "Creating formatted $out",
+    in: needs<Input<string>>(),
+    out: needs<string>(),
+    configPath: needs<string>(),
+    args: "",
+  });
+  return <O extends string>(a: {
+    in: Input<string>;
+    out: O;
+    configPath: string;
+    args?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: string | readonly string[];
+    [implicitOut]?: string | readonly string[];
+    [validations]?: (out: string) => string | readonly string[];
+  }): O => {
+    const { [implicitDeps]: _implicitDeps = [], configPath, ...rest } = a;
+    return formatTo({
+      ...rest,
+      configPath: dirname(configPath),
+      [implicitDeps]: _implicitDeps.concat(a.configPath),
+    });
   };
 }
 

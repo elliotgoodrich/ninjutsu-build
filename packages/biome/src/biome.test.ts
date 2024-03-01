@@ -1,6 +1,6 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
-import { makeLintRule, makeFormatRule } from "./biome.js";
+import { makeLintRule, makeFormatRule, makeFormatToRule } from "./biome.js";
 import { NinjaBuilder, orderOnlyDeps } from "@ninjutsu-build/core";
 
 test("makeLintRule", () => {
@@ -28,6 +28,17 @@ test("makeFormatRule", () => {
     out[orderOnlyDeps],
     "$builddir/.ninjutsu-build/biome/format/bar.js",
   );
+});
+
+test("makeFormatToRule", () => {
+  const ninja = new NinjaBuilder();
+  const format = makeFormatToRule(ninja);
+  const out: "nice.js" = format({
+    in: "ugly.js",
+    out: "nice.js",
+    configPath: "biome.json",
+  });
+  assert.equal(out, "nice.js");
 });
 
 test("format then lint", () => {
