@@ -22,8 +22,8 @@ const importCode =
 // we mention `node.exe` with the file extension to avoid the `winpty node` alias.
 const node = platform() === "win32" ? "cmd /c node.exe" : "node";
 
-const command = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" $nodeArgs $in -- $args > $out`;
-const testCommand = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" --test --test-reporter=${testReporter} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $nodeArgs $in -- $args`;
+const command = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" $nodeArgs $in $args > $out`;
+const testCommand = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" --test --test-reporter=${testReporter} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $nodeArgs $in $args`;
 
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
