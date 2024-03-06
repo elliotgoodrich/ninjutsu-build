@@ -169,13 +169,13 @@ const format = addBiomeConfig(
   inject(makeFormatRule(ninja), {
     [orderOnlyDeps]: toolsInstalled,
   }),
-  "./biome.json",
+  "biome.json",
 );
 const lint = addBiomeConfig(
   inject(makeLintRule(ninja), {
     [orderOnlyDeps]: toolsInstalled,
   }),
-  "./biome.json",
+  "biome.json",
 );
 const copy = makeCopyRule(ninja);
 const transpile = useBun ? makeTranspileRule(ninja) : makeSWCRule(ninja);

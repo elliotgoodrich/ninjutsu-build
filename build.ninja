@@ -40,31 +40,31 @@ rule copy
 rule buntranspile
   command = bun build $in --outfile $out --no-bundle $args
   description = Transpiling $in
-build $builddir/.ninjutsu-build/biome/format/configure.mjs: format configure.mjs | ./biome.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/configure.mjs: format configure.mjs | biome.json || node_modules/.package-lock.json
   cwd = .
   configPath = .
   args = 
 
 # packages/core
-build $builddir/.ninjutsu-build/biome/format/packages/core/package.json: format packages/core/package.json | ./biome.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/core/package.json: format packages/core/package.json | biome.json || node_modules/.package-lock.json
   configPath = .
   args = 
 build packages/core/node_modules/.package-lock.json: npmci packages/core/package.json || $builddir/.ninjutsu-build/biome/format/packages/core/package.json
   cwd = packages/core
-build $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.ts: lint packages/core/src/core.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.ts: lint packages/core/src/core.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts: format packages/core/src/core.ts | ./biome.json || packages/core/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.ts
+build $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts: format packages/core/src/core.ts | biome.json || packages/core/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.ts
   cwd = packages/core
   configPath = .
   args = 
 build packages/core/dist/core.js | packages/core/dist/core.d.ts: tsc packages/core/src/core.ts | packages/core/node_modules/.package-lock.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.ts node_modules/.package-lock.json
   cwd = packages/core
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck --rootDir src
-build $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.test.ts: lint packages/core/src/core.test.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.test.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.test.ts: lint packages/core/src/core.test.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/core/src/core.test.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/core/src/core.test.ts: format packages/core/src/core.test.ts | ./biome.json || packages/core/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.test.ts
+build $builddir/.ninjutsu-build/biome/format/packages/core/src/core.test.ts: format packages/core/src/core.test.ts | biome.json || packages/core/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/core/src/core.test.ts
   cwd = packages/core
   configPath = .
   args = 
@@ -85,7 +85,7 @@ build $builddir/ninjutsu-build-core.tgz: tar $builddir/core/README.md $builddir/
 build core: phony $builddir/ninjutsu-build-core.tgz $builddir/core/packages/core/dist/core.test.mjs.result.txt
 
 # packages/biome
-build $builddir/.ninjutsu-build/biome/format/packages/biome/package.json: format packages/biome/package.json | ./biome.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/biome/package.json: format packages/biome/package.json | biome.json || node_modules/.package-lock.json
   configPath = .
   args = 
 build packages/biome/node_modules/.package-lock.json: npmci packages/biome/package.json || $builddir/.ninjutsu-build/biome/format/packages/biome/package.json
@@ -93,20 +93,20 @@ build packages/biome/node_modules/.package-lock.json: npmci packages/biome/packa
 build $builddir/.ninjutsu-build/npmlink/packages/biome/package.json: npmlink packages/biome/package.json | $builddir/ninjutsu-build-core.tgz || $builddir/.ninjutsu-build/biome/format/packages/biome/package.json packages/biome/node_modules/.package-lock.json
   pkgs = $builddir/ninjutsu-build-core.tgz
   cwd = packages/biome
-build $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.ts: lint packages/biome/src/biome.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.ts: lint packages/biome/src/biome.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.ts: format packages/biome/src/biome.ts | ./biome.json || packages/biome/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.ts
+build $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.ts: format packages/biome/src/biome.ts | biome.json || packages/biome/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.ts
   cwd = packages/biome
   configPath = .
   args = 
 build packages/biome/dist/biome.js | packages/biome/dist/biome.d.ts: tsc packages/biome/src/biome.ts | $builddir/.ninjutsu-build/npmlink/packages/biome/package.json || $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.ts node_modules/.package-lock.json
   cwd = packages/biome
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck --rootDir src
-build $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.test.ts: lint packages/biome/src/biome.test.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.test.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.test.ts: lint packages/biome/src/biome.test.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.test.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.test.ts: format packages/biome/src/biome.test.ts | ./biome.json || packages/biome/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.test.ts
+build $builddir/.ninjutsu-build/biome/format/packages/biome/src/biome.test.ts: format packages/biome/src/biome.test.ts | biome.json || packages/biome/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/biome/src/biome.test.ts
   cwd = packages/biome
   configPath = .
   args = 
@@ -127,7 +127,7 @@ build $builddir/ninjutsu-build-biome.tgz: tar $builddir/biome/README.md $builddi
 build biome: phony $builddir/ninjutsu-build-biome.tgz $builddir/biome/packages/biome/dist/biome.test.mjs.result.txt
 
 # packages/bun
-build $builddir/.ninjutsu-build/biome/format/packages/bun/package.json: format packages/bun/package.json | ./biome.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/bun/package.json: format packages/bun/package.json | biome.json || node_modules/.package-lock.json
   configPath = .
   args = 
 build packages/bun/node_modules/.package-lock.json: npmci packages/bun/package.json || $builddir/.ninjutsu-build/biome/format/packages/bun/package.json
@@ -135,10 +135,10 @@ build packages/bun/node_modules/.package-lock.json: npmci packages/bun/package.j
 build $builddir/.ninjutsu-build/npmlink/packages/bun/package.json: npmlink packages/bun/package.json | $builddir/ninjutsu-build-core.tgz || $builddir/.ninjutsu-build/biome/format/packages/bun/package.json packages/bun/node_modules/.package-lock.json
   pkgs = $builddir/ninjutsu-build-core.tgz
   cwd = packages/bun
-build $builddir/.ninjutsu-build/biome/lint/packages/bun/src/bun.ts: lint packages/bun/src/bun.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/bun/src/bun.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/bun/src/bun.ts: lint packages/bun/src/bun.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/bun/src/bun.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/bun/src/bun.ts: format packages/bun/src/bun.ts | ./biome.json || packages/bun/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/bun/src/bun.ts
+build $builddir/.ninjutsu-build/biome/format/packages/bun/src/bun.ts: format packages/bun/src/bun.ts | biome.json || packages/bun/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/bun/src/bun.ts
   cwd = packages/bun
   configPath = .
   args = 
@@ -155,7 +155,7 @@ build $builddir/ninjutsu-build-bun.tgz: tar $builddir/bun/README.md $builddir/bu
 build bun: phony $builddir/ninjutsu-build-bun.tgz
 
 # packages/node
-build $builddir/.ninjutsu-build/biome/format/packages/node/package.json: format packages/node/package.json | ./biome.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/node/package.json: format packages/node/package.json | biome.json || node_modules/.package-lock.json
   configPath = .
   args = 
 build packages/node/node_modules/.package-lock.json: npmci packages/node/package.json || $builddir/.ninjutsu-build/biome/format/packages/node/package.json
@@ -163,55 +163,55 @@ build packages/node/node_modules/.package-lock.json: npmci packages/node/package
 build $builddir/.ninjutsu-build/npmlink/packages/node/package.json: npmlink packages/node/package.json | $builddir/ninjutsu-build-core.tgz || $builddir/.ninjutsu-build/biome/format/packages/node/package.json packages/node/node_modules/.package-lock.json
   pkgs = $builddir/ninjutsu-build-core.tgz
   cwd = packages/node
-build $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.ts: lint packages/node/src/node.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/node.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.ts: lint packages/node/src/node.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/node.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/node/src/node.ts: format packages/node/src/node.ts | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.ts
+build $builddir/.ninjutsu-build/biome/format/packages/node/src/node.ts: format packages/node/src/node.ts | biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.ts
   cwd = packages/node
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/lint/packages/node/src/makeDepfile.ts: lint packages/node/src/makeDepfile.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/makeDepfile.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/node/src/makeDepfile.ts: lint packages/node/src/makeDepfile.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/makeDepfile.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/node/src/makeDepfile.ts: format packages/node/src/makeDepfile.ts | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/src/makeDepfile.ts
+build $builddir/.ninjutsu-build/biome/format/packages/node/src/makeDepfile.ts: format packages/node/src/makeDepfile.ts | biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/src/makeDepfile.ts
   cwd = packages/node
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/testReporter.mjs: lint packages/node/lib/testReporter.mjs | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/testReporter.mjs node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/testReporter.mjs: lint packages/node/lib/testReporter.mjs | biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/testReporter.mjs node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/node/lib/testReporter.mjs: format packages/node/lib/testReporter.mjs | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/testReporter.mjs
+build $builddir/.ninjutsu-build/biome/format/packages/node/lib/testReporter.mjs: format packages/node/lib/testReporter.mjs | biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/testReporter.mjs
   cwd = packages/node
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/hookRequire.cjs: lint packages/node/lib/hookRequire.cjs | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/hookRequire.cjs node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/hookRequire.cjs: lint packages/node/lib/hookRequire.cjs | biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/hookRequire.cjs node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/node/lib/hookRequire.cjs: format packages/node/lib/hookRequire.cjs | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/hookRequire.cjs
+build $builddir/.ninjutsu-build/biome/format/packages/node/lib/hookRequire.cjs: format packages/node/lib/hookRequire.cjs | biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/hookRequire.cjs
   cwd = packages/node
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.d.cts: lint packages/node/lib/file.d.cts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.d.cts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.d.cts: lint packages/node/lib/file.d.cts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.d.cts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.d.cts: format packages/node/lib/file.d.cts | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.d.cts
+build $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.d.cts: format packages/node/lib/file.d.cts | biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.d.cts
   cwd = packages/node
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.cjs: lint packages/node/lib/file.cjs | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.cjs node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.cjs: lint packages/node/lib/file.cjs | biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.cjs node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.cjs: format packages/node/lib/file.cjs | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.cjs
+build $builddir/.ninjutsu-build/biome/format/packages/node/lib/file.cjs: format packages/node/lib/file.cjs | biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/lib/file.cjs
   cwd = packages/node
   configPath = .
   args = 
 build packages/node/dist/node.js | packages/node/dist/node.d.ts packages/node/dist/makeDepfile.js packages/node/dist/makeDepfile.d.ts: tsc packages/node/src/node.ts packages/node/src/makeDepfile.ts | $builddir/.ninjutsu-build/npmlink/packages/node/package.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/node.ts $builddir/.ninjutsu-build/biome/format/packages/node/src/makeDepfile.ts node_modules/.package-lock.json
   cwd = packages/node
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck --rootDir src
-build $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.test.ts: lint packages/node/src/node.test.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/node.test.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.test.ts: lint packages/node/src/node.test.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/node/src/node.test.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/node/src/node.test.ts: format packages/node/src/node.test.ts | ./biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.test.ts
+build $builddir/.ninjutsu-build/biome/format/packages/node/src/node.test.ts: format packages/node/src/node.test.ts | biome.json || packages/node/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/node/src/node.test.ts
   cwd = packages/node
   configPath = .
   args = 
@@ -238,7 +238,7 @@ build $builddir/ninjutsu-build-node.tgz: tar $builddir/node/README.md $builddir/
 build node: phony $builddir/ninjutsu-build-node.tgz $builddir/node/packages/node/dist/node.test.mjs.result.txt
 
 # packages/tsc
-build $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json: format packages/tsc/package.json | ./biome.json || node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json: format packages/tsc/package.json | biome.json || node_modules/.package-lock.json
   configPath = .
   args = 
 build packages/tsc/node_modules/.package-lock.json: npmci packages/tsc/package.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json
@@ -246,20 +246,20 @@ build packages/tsc/node_modules/.package-lock.json: npmci packages/tsc/package.j
 build $builddir/.ninjutsu-build/npmlink/packages/tsc/package.json: npmlink packages/tsc/package.json | $builddir/ninjutsu-build-core.tgz || $builddir/.ninjutsu-build/biome/format/packages/tsc/package.json packages/tsc/node_modules/.package-lock.json
   pkgs = $builddir/ninjutsu-build-core.tgz
   cwd = packages/tsc
-build $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.ts: lint packages/tsc/src/tsc.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.ts: lint packages/tsc/src/tsc.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.ts: format packages/tsc/src/tsc.ts | ./biome.json || packages/tsc/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.ts
+build $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.ts: format packages/tsc/src/tsc.ts | biome.json || packages/tsc/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.ts
   cwd = packages/tsc
   configPath = .
   args = 
 build packages/tsc/dist/tsc.js | packages/tsc/dist/tsc.d.ts: tsc packages/tsc/src/tsc.ts | $builddir/.ninjutsu-build/npmlink/packages/tsc/package.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.ts node_modules/.package-lock.json
   cwd = packages/tsc
   args = --target ES2018 --lib ES2021 --outDir dist --module NodeNext --moduleResolution NodeNext --declaration --esModuleInterop --forceConsistentCasingInFileNames --strict --noImplicitAny --strictNullChecks --strictFunctionTypes --strictBindCallApply --strictPropertyInitialization --noImplicitThis --useUnknownInCatchVariables --alwaysStrict --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --skipDefaultLibCheck --skipLibCheck --rootDir src
-build $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.test.ts: lint packages/tsc/src/tsc.test.ts | ./biome.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.test.ts node_modules/.package-lock.json
+build $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.test.ts: lint packages/tsc/src/tsc.test.ts | biome.json || $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.test.ts node_modules/.package-lock.json
   configPath = .
   args = 
-build $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.test.ts: format packages/tsc/src/tsc.test.ts | ./biome.json || packages/tsc/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.test.ts
+build $builddir/.ninjutsu-build/biome/format/packages/tsc/src/tsc.test.ts: format packages/tsc/src/tsc.test.ts | biome.json || packages/tsc/node_modules/.package-lock.json node_modules/.package-lock.json |@ $builddir/.ninjutsu-build/biome/lint/packages/tsc/src/tsc.test.ts
   cwd = packages/tsc
   configPath = .
   args = 
