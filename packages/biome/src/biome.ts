@@ -14,6 +14,7 @@ import { platform, arch } from "os";
 
 const exe = platform() === "win32" ? ".exe" : "";
 const prefix = platform() === "win32" ? "cmd /c " : "";
+const cat = platform() === "win32" ? "type" : "cat";
 
 // Don't use `npx biome format` as this requires a node process and
 // the overhead is so much greater than running the biome executable.
@@ -180,8 +181,8 @@ export function makeFormatToRule(
   ninja: NinjaBuilder,
   name = "formatTo",
 ): <O extends string>(args: {
-  in: Input<string>;
   out: O;
+  in: Input<string>;
   configPath: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
@@ -192,17 +193,19 @@ export function makeFormatToRule(
   const formatTo = ninja.rule(name, {
     command:
       prefix +
+      cat +
+      " $in | " +
       join("node_modules", biomeCommand) +
-      " format $args --config-path $configPath > $out",
-    description: "Creating formatted $out",
+      " format $args --config-path $configPath --stdin-file-path=$in > $out",
+    description: "Formatting $in to $out",
     in: needs<Input<string>>(),
     out: needs<string>(),
     configPath: needs<string>(),
     args: "",
   });
   return <O extends string>(a: {
-    in: Input<string>;
     out: O;
+    in: Input<string>;
     configPath: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
