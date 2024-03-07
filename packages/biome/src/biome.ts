@@ -14,7 +14,6 @@ import { platform, arch } from "os";
 
 const exe = platform() === "win32" ? ".exe" : "";
 const prefix = platform() === "win32" ? "cmd /c " : "";
-const cat = platform() === "win32" ? "type" : "cat";
 
 // Don't use `npx biome format` as this requires a node process and
 // the overhead is so much greater than running the biome executable.
@@ -190,13 +189,15 @@ export function makeFormatToRule(
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
+  // Type cannot handle forward slashes in paths so instead we pass `$inBackSlash`
+  // for windows that has backslashes
+  const cat = platform() === "win32" ? "type" : "cat";
+  const inVar = platform() === "win32" ? "$inBackSlash" : "$in";
   const formatTo = ninja.rule(name, {
-    command:
-      prefix +
-      cat +
-      " $in | " +
-      join("node_modules", biomeCommand) +
-      " format $args --config-path $configPath --stdin-file-path=$in > $out",
+    command: `${prefix}${cat} ${inVar} | ${join(
+      "node_modules",
+      biomeCommand,
+    )} format $args --config-path $configPath --stdin-file-path=$in > $out`,
     description: "Formatting $in to $out",
     in: needs<Input<string>>(),
     out: needs<string>(),
@@ -214,9 +215,14 @@ export function makeFormatToRule(
     [validations]?: (out: string) => string | readonly string[];
   }): O => {
     const { [implicitDeps]: _implicitDeps = [], configPath, ...rest } = a;
+    const extra =
+      platform() === "win32"
+        ? { inBackSlash: getInput(a.in).replaceAll("/", "\\") }
+        : {};
     return formatTo({
       ...rest,
       configPath: dirname(configPath),
+      ...extra,
       [implicitDeps]: _implicitDeps.concat(a.configPath),
     });
   };
