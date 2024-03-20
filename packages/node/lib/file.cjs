@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 const { openSync, writeFileSync } = require("node:fs");
 const { resolve, relative, isAbsolute } = require("node:path");
 

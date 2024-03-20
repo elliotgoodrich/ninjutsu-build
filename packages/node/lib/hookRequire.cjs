@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 const Module = require("module");
 const { dirname } = require("node:path");
 const { logDependency } = require("./file.cjs");
