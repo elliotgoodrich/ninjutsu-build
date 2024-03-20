@@ -24,4 +24,4 @@ jobs:
     - uses: seanmiddleditch/gha-setup-ninja@master
     - run: npm ci
     - run: npm run configure
-    - run: ninja
+    - run: ninja -k 0
