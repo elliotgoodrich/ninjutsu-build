@@ -3,7 +3,7 @@
 A set of TypeScript libraries for creating ninja files (https://ninja-build.org/).
 
 Ninjutsu Build is built using itself. You can see the [configure.mjs](configure.mjs)
-script used to generate the corresponding [build.ninja](build.ninja) file.
+script used to generate the `build.ninja` file.
 
 ## Why Ninjutsu Build?
 
