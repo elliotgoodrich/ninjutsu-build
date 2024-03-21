@@ -295,9 +295,11 @@ test("Passing all arguments to a `NinjaRule`", () => {
       file: "hi",
       [implicitDeps]: "implicit1",
       [orderOnlyDeps]: "ordered1",
+      [validations]: ["valid1"],
     },
     [implicitDeps]: "implicit2",
     [orderOnlyDeps]: ["ordered2", "ordered3"],
+    [validations]: (out: string) => "valid2_" + out,
   });
   assert.equal(out, "out.txt");
   assert.equal(
@@ -311,7 +313,7 @@ build out.txt | implicitOut_: all in.txt | implicitDeps_ || orderOnlyDeps_ |@ va
   description = description_
   pool = pool
   extra = 123
-build foo: all hi | implicit1 implicit2 || ordered1 ordered2 ordered3
+build foo: all hi | implicit1 implicit2 || ordered1 ordered2 ordered3 |@ valid1 valid2_foo
 `,
   );
 });
