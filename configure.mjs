@@ -91,13 +91,9 @@ function makeSWCRule(ninja) {
   });
 }
 
-function formatAndLint(cwd, file, deps) {
-  return format({
-    in: file,
-    cwd,
-    [validations]: (out) => lint({ in: out }),
-    [orderOnlyDeps]: deps[orderOnlyDeps],
-  });
+function formatAndLint(file) {
+  const formatted = format({ in: file });
+  return lint({ in: formatted });
 }
 
 // Return a function that will append `args[orderOnlyDeps]` with the build arguments
@@ -235,24 +231,16 @@ toposort(
           })
         : dependenciesInstalled;
 
-    // Format `file` and then run `lint` as a validation step with a
-    // order-only dependency on formatting finishing for that file. Make sure that
-    // we start only after biome have been installed.
-    const f = (file) =>
-      formatAndLint(cwd, file, {
-        [orderOnlyDeps]: [dependenciesInstalled],
-      });
-
     // Grab all TypeScript source files and format them
     const ts = globSync(join(cwd, "src", "*.ts"), {
       posix: true,
       ignore: { ignored: (f) => f.name.endsWith(".test.ts") },
-    }).map(f);
+    }).map(formatAndLint);
 
     // In the `lib` directory we have JavaScript files and TS declaration files
     const lib = globSync(join(cwd, "lib", "*.*"), {
       posix: true,
-    }).map(f);
+    }).map(formatAndLint);
 
     // Transpile the TypeScript into JavaScript once formatting has finished
     const dist = tsc({
@@ -268,7 +256,7 @@ toposort(
     // Grab all TypeScript tests files and format them
     const tests = globSync(join(cwd, "src", "*.test.ts"), {
       posix: true,
-    }).map(f);
+    }).map(formatAndLint);
 
     // Type check all the tests
     const testTargets = (() => {
