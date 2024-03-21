@@ -231,7 +231,9 @@ export function makeFormatToRule(
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
  * run `biome lint` on the input file and write the results to a unspecified file, whose
- * path will be returned by the function.
+ * path will be returned by the function along with a validation step on the unspecified
+ * file containing the results. This causes all build edges that depend on this input to
+ * add a validation step on the linting.
  *
  * The returned function takes a `configPath` property, which is the path to the
  * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
@@ -247,11 +249,13 @@ export function makeFormatToRule(
  * const ninja = new NinjaBuilder();
  * const lint = makeLintRule(ninja);
  *
- * globSync("src/*.js", { posix: true }).forEach((js) => lint({
- *   in: js,
- *   configPath: "biome.json",
- *   args: "--no-errors-on-unmatched",
- * }));
+ * for (const js of globSync("src/*.js", { posix: true })) {
+ *   lint({
+ *     in: js,
+ *     configPath: "biome.json",
+ *     args: "--no-errors-on-unmatched",
+ *   });
+ * }
  *
  * writeFileSync("build.ninja", ninja.output);
  * ```
@@ -270,19 +274,20 @@ export function makeFormatToRule(
  * ```ts
  * import { NinjaBuilder, validations } from "@ninjutsu-build/core";
  * import { makeLintRule } from "@ninjutsu-build/biome";
- * import { makeNodeRule } from "@ninjutsu-build/node";
+ * import { makeNodeTestRule } from "@ninjutsu-build/node";
  * import { globSync } from "glob";
  *
  * const ninja = new NinjaBuilder();
  * const lint = makeLintRule(ninja);
- * const node = makeNodeRule(ninja);
+ * const test = makeNodeTestRule(ninja);
  *
- * globSync("tests/*.test.js", { posix: true }).map((test) => node({
- *   in: test,
- *   out: "$builddir/test-results/" + test,
- *   args: "--test",
- *   [validations]: () => lint({ in: test, configPath: "biome.json" }),
- * }));
+ * for (const path of globSync("tests/*.test.js", { posix: true })) {
+ *   const linted = lint({ in: path, configPath: "biome.json" });
+ *   test({
+ *     in: linted,
+ *     out: "$builddir/test-results/" + path,
+ *   });
+ * )
  *
  * writeFileSync("build.ninja", ninja.output);
  * ```
@@ -298,7 +303,11 @@ export function makeLintRule(
   [orderOnlyDeps]?: string | readonly string[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
-}) => `$builddir/.ninjutsu-build/biome/lint/${I}` {
+}) => {
+  file: I;
+  [validations]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
+  [orderOnlyDeps]?: string | readonly string[];
+} {
   const lint = ninja.rule(name, {
     command:
       prefix +
@@ -318,13 +327,35 @@ export function makeLintRule(
     [orderOnlyDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
-  }): `$builddir/.ninjutsu-build/biome/lint/${I}` => {
+  }): {
+    file: I;
+    [validations]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
+    [orderOnlyDeps]?: string | readonly string[];
+  } => {
     const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
-    return lint({
-      out: `$builddir/.ninjutsu-build/biome/lint/${getInput(a.in)}`,
+
+    const file = getInput(a.in);
+    const validationFile =
+      `$builddir/.ninjutsu-build/biome/lint/${file}` as const;
+    lint({
+      out: validationFile,
       configPath: dirname(configPath),
       ...rest,
       [implicitDeps]: _implicitDeps.concat(a.configPath),
     });
+
+    // If there is a build-order dependency then we must return this to
+    // anyone depending on our output since we are forwarding it from our
+    // input and just injecting a validation step
+    const forwardDeps =
+      typeof a.in === "object" && orderOnlyDeps in a.in
+        ? { [orderOnlyDeps]: a.in[orderOnlyDeps] }
+        : {};
+
+    return {
+      file,
+      [validations]: validationFile,
+      ...forwardDeps,
+    };
   };
 }

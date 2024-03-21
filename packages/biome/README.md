@@ -19,9 +19,9 @@ runs those tests with node's test runner, while linting those JavaScript files
 in parallel.
 
 ```ts
-import { NinjaBuilder, validations, orderOnlyDeps } from "@ninjutsu-build/core";
+import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
-import { makeNodeRule } from "@ninjutsu-build/node";
+import { makeNodeTestRule } from "@ninjutsu-build/node";
 import { writeFileSync } from "fs";
 
 // Create a `NinjaBuilder` requiring 1.11 (for validations)
@@ -33,24 +33,19 @@ const ninja = new NinjaBuilder({
 // Create our rules
 const format = makeFormatRule(ninja);
 const lint = makeLintRule(ninja);
-const node = makeNodeRule(ninja);
+const test = makeNodeTestRule(ninja);
 
 const biomeConfig = "biome.json",
 
-// For each test
-//   - format it
-//   - and then afterwards (using order-only dependencies) run the JS test
-//   - run linting as a validation step, which will allow ninja to run it
-//     in parallel to the test
-globSync("tests/*.test.js", { posix: true }).forEach((js) => {
+// For each test file, format, lint, and run it in node
+for (const js of globSync("tests/*.test.js", { posix: true })) {
   const formatted = format({ in: js, configPath: biomeConfig });
-  node({
-    in: formatted.file,
-    args: "--test",
-    [orderOnlyDeps]: formatted[orderOnlyDeps],
-    [validations]: (file) => lint({ in: file, configPath: biomeConfig }),
-  })
-});
+  const linted = lint({ in: formatted, configPath: biomeConfig });
+  test({
+    in: linted,
+    out: `$builddir/results/${js}.txt`,
+  });
+};
 
 // Write the ninja file to disk
 writeFileSync("build.ninja", ninja.output);
