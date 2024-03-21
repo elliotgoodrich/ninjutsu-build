@@ -135,6 +135,7 @@ export type Input<T extends string> =
       file: T;
       [implicitDeps]?: string | readonly string[];
       [orderOnlyDeps]?: string | readonly string[];
+      [validations]?: string | readonly string[];
     };
 
 /**
@@ -251,6 +252,7 @@ function homogenize(
   file?: string | readonly string[];
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: string | readonly string[];
+  [validations]?: string | readonly string[];
 } {
   if (input === undefined) {
     return {};
@@ -267,6 +269,7 @@ function homogenize(
     file: [] as string[],
     [implicitDeps]: [] as string[],
     [orderOnlyDeps]: [] as string[],
+    [validations]: [] as string[],
   };
   for (let i = 0; i < input.length; ++i) {
     const entry = input[i];
@@ -286,6 +289,13 @@ function homogenize(
           out[orderOnlyDeps].push(entry[orderOnlyDeps]);
         } else {
           out[orderOnlyDeps] = out[orderOnlyDeps].concat(entry[orderOnlyDeps]);
+        }
+      }
+      if (validations in entry) {
+        if (typeof entry[validations] === "string") {
+          out[validations].push(entry[validations]);
+        } else {
+          out[validations] = out[validations].concat(entry[validations]);
         }
       }
     }
@@ -565,6 +575,7 @@ export class NinjaBuilder {
         file: input,
         [implicitDeps]: extraDeps,
         [orderOnlyDeps]: extraOrderDeps,
+        [validations]: extraValidations,
       } = homogenize(_in);
 
       // Use a temporary string to not interweave multiple calls on this object
@@ -590,6 +601,7 @@ export class NinjaBuilder {
         ) +
         concatPaths(
           " |@ ",
+          extraValidations,
           buildVariables[validations] === undefined
             ? undefined
             : buildVariables[validations]?.(out),
