@@ -7,7 +7,11 @@ import {
 } from "@ninjutsu-build/core";
 import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
-import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
+import {
+  makeCheckFormattedRule,
+  makeFormatRule,
+  makeLintRule,
+} from "@ninjutsu-build/biome";
 import { makeTranspileRule } from "@ninjutsu-build/bun";
 import { basename, dirname, extname, relative, join } from "node:path/posix";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -19,6 +23,7 @@ const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
 const useBun = process.argv.includes("--bun");
+const inCi = process.argv.includes("--ci");
 
 function makeNpmCiRule(ninja) {
   const ci = ninja.rule("npmci", {
@@ -152,7 +157,29 @@ const ninja = new NinjaBuilder({
 ninja.output += "\n";
 ninja.comment("Rules + Installation");
 const ci = makeNpmCiRule(ninja);
-const toolsInstalled = ci({ in: "package.json" });
+
+// We would like to check whether `package.json` is formatted correctly.
+// Most of the rules inject a build-order dependency on `npm ci` having
+// run correctly, but we also need a validation dependency from running
+// `npm ci` so we have a cycle (in JS only, ninja is happy with a cycle
+// containing a validations edge).  This means it's a bit convoluted to
+// create the `checkFormatted` rule but that what the code below does.
+let checkFormatted;
+
+const toolsInstalled = ci({
+  in: "package.json",
+  [validations]: (out) => {
+    checkFormatted = addBiomeConfig(
+      inject(makeCheckFormattedRule(ninja), {
+        [orderOnlyDeps]: out,
+      }),
+      "biome.json",
+    );
+    // Add a validation that `package.json` is formatted correctly.
+    // If we formatted after running `npmci` it would cause us to run it again
+    return checkFormatted({ in: "package.json" })[validations];
+  },
+});
 
 const link = makeNpmLinkRule(ninja);
 const tsc = inject(makeTSCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
@@ -161,12 +188,14 @@ const typecheck = inject(makeTypeCheckRule(ninja), {
 });
 const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
-const format = addBiomeConfig(
-  inject(makeFormatRule(ninja), {
-    [orderOnlyDeps]: toolsInstalled,
-  }),
-  "biome.json",
-);
+const format = inCi
+  ? checkFormatted
+  : addBiomeConfig(
+      inject(makeFormatRule(ninja), {
+        [orderOnlyDeps]: toolsInstalled,
+      }),
+      "biome.json",
+    );
 const lint = addBiomeConfig(
   inject(makeLintRule(ninja), {
     [orderOnlyDeps]: toolsInstalled,
@@ -182,10 +211,6 @@ const transpileArgs = useBun
   : "-C jsc.target=es2018";
 
 const { phony } = ninja;
-
-// TODO: Add a validation that `package.json` is formatted correctly.
-// We need to format after running `npmci` but then formatting the
-// file will cause us to rerun `npmci` again
 
 format({ in: "configure.mjs", cwd: "." });
 
