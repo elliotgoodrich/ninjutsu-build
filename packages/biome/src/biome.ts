@@ -230,6 +230,125 @@ export function makeFormatToRule(
 
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
+ * run `biome format` on the input file and write the results to a unspecified file, whose
+ * path will be returned by the function along with a validation step on the unspecified
+ * file containing the results. This causes all build edges that depend on this input to
+ * add a validation step on checking whether the input file is correctly formatted.
+ *
+ * This is useful when build a ninja file for CI as you may not want to fix formatting
+ * issues with {@link makeFormatRule} and only alert when a file is not formatted.
+ *
+ * The returned function takes a `configPath` property, which is the path to the
+ * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
+ * `args` property exists to pass in any additional options to the CLI.
+ *
+ * For example the following will either format or check test files are formatted
+ * and run the tests.  The `--ci` flag passed in will cause the generated ninja file to
+ * check the formatting in parallel to running the tests, but will not overwrite the
+ * source files. Whereas if no flag is passed in will will reformat the source files
+ * in parallel and then run the corresponding test once that has finished.
+ *
+ * ```ts
+ * import { NinjaBuilder } from "@ninjutsu-build/core";
+ * import { makeFormatRule, makeCheckFormattedRule } from "@ninjutsu-build/biome";
+ * import { globSync } from "glob";
+ *
+ * const ninja = new NinjaBuilder();
+ *
+ * const nonDestructive = process.argv.includes("--ci");
+ * const format = nonDestructive
+ *   ? makeCheckFormattedRule(ninja)
+ *   : makeFormatRule(ninja);
+ *
+ * for (const js of globSync("src/*.test.js", { posix: true })) {
+ *   const formatted = format({
+ *     in: js,
+ *     configPath: "biome.json",
+ *     args: "--no-errors-on-unmatched",
+ *   });
+ *   test({
+ *     in: formatted,
+ *     out: getInput(formatted) + ".txt",
+ *   })
+ * }
+ *
+ * writeFileSync("build.ninja", ninja.output);
+ * ```
+ *
+ * Linting and other static analysis rules are commonly done as a
+ * [ninja validation step](https://ninja-build.org/manual.html#validations) to improve
+ * parallelism and avoid increasing the critical path.
+ */
+export function makeCheckFormattedRule(
+  ninja: NinjaBuilder,
+  name = "checkFormatted",
+): <I extends string>(args: {
+  in: Input<I>;
+  configPath: string;
+  args?: string;
+  [implicitDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: string | readonly string[];
+  [implicitOut]?: string | readonly string[];
+  [validations]?: (out: string) => string | readonly string[];
+}) => {
+  file: I;
+  [validations]: `$builddir/.ninjutsu-build/biome/checkFormatted/${I}`;
+  [orderOnlyDeps]?: string | readonly string[];
+} {
+  const checkFormatted = ninja.rule(name, {
+    command:
+      prefix +
+      join("node_modules", biomeCommand) +
+      " format $args --config-path $configPath $in > $out",
+    description: "Checking format of $in",
+    in: needs<Input<string>>(),
+    out: needs<string>(),
+    configPath: needs<string>(),
+    args: "",
+  });
+  return <I extends string>(a: {
+    in: Input<I>;
+    configPath: string;
+    args?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: string | readonly string[];
+    [implicitOut]?: string | readonly string[];
+    [validations]?: (out: string) => string | readonly string[];
+  }): {
+    file: I;
+    [validations]: `$builddir/.ninjutsu-build/biome/checkFormatted/${I}`;
+    [orderOnlyDeps]?: string | readonly string[];
+  } => {
+    const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
+
+    const file = getInput(a.in);
+    const validationFile =
+      `$builddir/.ninjutsu-build/biome/checkFormatted/${file}` as const;
+    checkFormatted({
+      out: validationFile,
+      configPath: dirname(configPath),
+      ...rest,
+      [implicitDeps]: _implicitDeps.concat(a.configPath),
+    });
+
+    // If there is a build-order dependency then we must return this to
+    // anyone depending on our output since we are forwarding it from our
+    // input and just injecting a validation step
+    const forwardDeps =
+      typeof a.in === "object" && orderOnlyDeps in a.in
+        ? { [orderOnlyDeps]: a.in[orderOnlyDeps] }
+        : {};
+
+    return {
+      file,
+      [validations]: validationFile,
+      ...forwardDeps,
+    };
+  };
+}
+
+/**
+ * Create a rule in the specified `ninja` builder with the specified `name` that will
  * run `biome lint` on the input file and write the results to a unspecified file, whose
  * path will be returned by the function along with a validation step on the unspecified
  * file containing the results. This causes all build edges that depend on this input to

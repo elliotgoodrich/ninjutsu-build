@@ -1,6 +1,11 @@
 import test from "node:test";
 import { strict as assert } from "node:assert";
-import { makeLintRule, makeFormatRule, makeFormatToRule } from "./biome.js";
+import {
+  makeCheckFormattedRule,
+  makeLintRule,
+  makeFormatRule,
+  makeFormatToRule,
+} from "./biome.js";
 import {
   NinjaBuilder,
   implicitDeps,
@@ -74,30 +79,70 @@ test("makeFormatToRule", () => {
   assert.equal(out, "nice.js");
 });
 
+test("makeCheckFormattedRule", () => {
+  const ninja = new NinjaBuilder();
+  const checkFormatted = makeCheckFormattedRule(ninja);
+  const out: {
+    file: "ugly.js";
+    [validations]: `$builddir/.ninjutsu-build/biome/checkFormatted/ugly.js`;
+  } = checkFormatted({
+    in: "ugly.js",
+    configPath: "biome.json",
+  });
+  assert.deepEqual(out, {
+    file: "ugly.js",
+    [validations]: "$builddir/.ninjutsu-build/biome/checkFormatted/ugly.js",
+  });
+});
+
 test("format then lint", () => {
   const ninja = new NinjaBuilder();
   const format = makeFormatRule(ninja);
   const lint = makeLintRule(ninja);
-  const formatted = format({
-    in: "src/bar.js",
-    configPath: "biome.json",
-  });
-  assert.deepEqual(formatted, {
-    file: "src/bar.js",
-    [orderOnlyDeps]: "$builddir/.ninjutsu-build/biome/format/src/bar.js",
-  });
+  const checkFormatted = makeCheckFormattedRule(ninja);
 
-  const linted = lint({
-    in: formatted,
-    configPath: "biome.json",
-  });
+  {
+    const formatted = format({
+      in: "src/bar.js",
+      configPath: "biome.json",
+    });
+    assert.deepEqual(formatted, {
+      file: "src/bar.js",
+      [orderOnlyDeps]: "$builddir/.ninjutsu-build/biome/format/src/bar.js",
+    });
 
-  // Check anything that would take `linted` as an input would wait for
-  // formatting to finish (orderOnlyDeps) and guarantee that linting would
-  // be done (validations).
-  assert.deepEqual(linted, {
-    file: "src/bar.js",
-    [validations]: "$builddir/.ninjutsu-build/biome/lint/src/bar.js",
-    [orderOnlyDeps]: "$builddir/.ninjutsu-build/biome/format/src/bar.js",
-  });
+    const linted = lint({
+      in: formatted,
+      configPath: "biome.json",
+    });
+
+    // Check anything that would take `linted` as an input would wait for
+    // formatting to finish (orderOnlyDeps) and guarantee that linting would
+    // be done (validations).
+    assert.deepEqual(linted, {
+      file: "src/bar.js",
+      [validations]: "$builddir/.ninjutsu-build/biome/lint/src/bar.js",
+      [orderOnlyDeps]: "$builddir/.ninjutsu-build/biome/format/src/bar.js",
+    });
+  }
+
+  {
+    const linted = lint({
+      in: "src/in.js",
+      configPath: "biome.json",
+    });
+
+    const formatChecked = checkFormatted({
+      in: linted,
+      configPath: "biome.json",
+    });
+
+    // We don't need to pass through the validations from `linted` because
+    // whenever the formatting validation is triggered it will trigger
+    // the linting one.
+    assert.deepEqual(formatChecked, {
+      file: "src/in.js",
+      [validations]: "$builddir/.ninjutsu-build/biome/checkFormatted/src/in.js",
+    });
+  }
 });
