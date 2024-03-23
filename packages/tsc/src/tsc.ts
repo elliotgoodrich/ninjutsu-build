@@ -1,6 +1,7 @@
 import {
   type NinjaBuilder,
   type Input,
+  getInput,
   getInputs,
   escapePath,
   needs,
@@ -115,8 +116,8 @@ export function makeTypeCheckRule(
   [orderOnlyDeps]?: string | readonly string[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
-}) => O {
-  const rule = ninja.rule(name, {
+}) => { file: string; [validations]: O }[] {
+  const typecheck = ninja.rule(name, {
     command:
       prefix +
       "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in",
@@ -137,13 +138,17 @@ export function makeTypeCheckRule(
     [orderOnlyDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
-  }): O => {
+  }): { file: string; [validations]: O }[] => {
     const { compilerOptions = {}, cwd = ".", ...rest } = a;
-    return rule({
+    const typechecked = typecheck({
       ...rest,
       cwd,
       args: compilerOptionsToArray(compilerOptions).join(" "),
     });
+    return a.in.map((file) => ({
+      file: getInput(file),
+      [validations]: typechecked,
+    }));
   };
 }
 

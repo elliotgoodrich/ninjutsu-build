@@ -95,14 +95,23 @@ test("makeTSCRule", () => {
 test("makeTypeCheckRule", () => {
   const ninja = new NinjaBuilder();
   const typecheck = makeTypeCheckRule(ninja);
-  assert.equal(
+  assert.deepEqual(
     typecheck({
-      in: ["src/common/index.ts"],
+      in: ["src/common/index.ts", "src/app/index.ts"],
       out: "$builddir/typechecked.stamp",
       compilerOptions: {
         outDir: "output",
       },
     }),
-    "$builddir/typechecked.stamp",
+    [
+      {
+        file: "src/common/index.ts",
+        [validations]: "$builddir/typechecked.stamp",
+      },
+      {
+        file: "src/app/index.ts",
+        [validations]: "$builddir/typechecked.stamp",
+      },
+    ],
   );
 });
