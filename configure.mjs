@@ -174,7 +174,9 @@ const lint = addBiomeConfig(
   "biome.json",
 );
 const copy = makeCopyRule(ninja);
-const transpile = useBun ? makeTranspileRule(ninja) : makeSWCRule(ninja);
+const transpile = useBun
+  ? makeTranspileRule(ninja)
+  : inject(makeSWCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
 const transpileArgs = useBun
   ? "--target=node --no-bundle"
   : "-C jsc.target=es2018";
