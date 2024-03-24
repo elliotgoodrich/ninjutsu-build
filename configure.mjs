@@ -288,7 +288,7 @@ toposort(
     // Type check all the tests
     const testTargets = (() => {
       if (tests.length !== 0) {
-        const typechecked = typecheck({
+        return typecheck({
           in: tests,
           out: join(cwd, "dist", "typechecked.stamp"),
           compilerOptions,
@@ -297,15 +297,11 @@ toposort(
           // Only run this after generating all the TypeScript definition files for the
           // library files.
           [orderOnlyDeps]: dist,
-        });
-
-        // Individually transpile and run each test
-        return tests.map((t) => {
+        }).map((t) => {
           const file = getInput(t);
           const js = transpile({
             in: t,
             out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
-            [validations]: () => typechecked,
             args: transpileArgs,
           });
           return test({
