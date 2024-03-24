@@ -259,7 +259,7 @@ toposort(
         : dependenciesInstalled;
 
     // Grab all TypeScript source files and format them
-    const ts = globSync(join(cwd, "src", "*.ts"), {
+    const ts = globSync(join(cwd, "src", "*.{mts,ts}"), {
       posix: true,
       ignore: { ignored: (f) => f.name.endsWith(".test.ts") },
     }).map(formatAndLint);
