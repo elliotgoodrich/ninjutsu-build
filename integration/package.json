@@ -1,0 +1,30 @@
+{
+  "name": "@ninjutsu-build/integration",
+  "version": "0.0.1",
+  "description": "Integration tests for the plugins",
+  "author": "Elliot Goodrich",
+  "scripts": {
+    "test": "ninja integration -C .."
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build.git",
+    "directory": "integration"
+  },
+  "homepage": "https://github.com/elliotgoodrich/ninjutsu-build",
+  "bugs": {
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
+  },
+  "peerDependencies": {
+    "@ninjutsu-build/core": "^0.8.5",
+    "@ninjutsu-build/node": "^0.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "typescript": "^5.2.2"
+  }
+}
