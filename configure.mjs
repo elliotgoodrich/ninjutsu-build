@@ -216,7 +216,7 @@ format({ in: "configure.mjs", cwd: "." });
 
 const scope = "@ninjutsu-build/";
 const graph = {};
-toposort(
+const tars = toposort(
   globSync("*", { posix: true, cwd: "packages" }).flatMap((packageName) => {
     const packageJSON = JSON.parse(
       readFileSync(join("packages", packageName, "package.json")).toString(),
@@ -346,5 +346,49 @@ toposort(
       [packageName]: createTar,
     });
   }, {});
+
+{
+  const cwd = "integration";
+
+  // If `packageJSON` is changed (and only after we have run `npm ci`)
+  // install our packages locally
+  const packageJSON = join(cwd, "package.json");
+  const dependenciesInstalled = ci({ in: packageJSON });
+  const linked = link({
+    in: packageJSON,
+    pkgs: Object.values(tars),
+    [orderOnlyDeps]: [dependenciesInstalled],
+  });
+
+  // Grab all TypeScript tests files and format them
+  const tests = globSync(join(cwd, "src", "*.test.ts"), {
+    posix: true,
+  }).map(formatAndLint);
+
+  const typechecked = typecheck({
+    in: tests,
+    out: join(cwd, "dist", "typechecked.stamp"),
+    compilerOptions,
+    cwd,
+    [implicitDeps]: [linked],
+  });
+
+  const integrationTests = typechecked.map((t) => {
+    const file = getInput(t);
+    const js = transpile({
+      in: t,
+      out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
+      args: transpileArgs,
+    });
+
+    return test({
+      in: js,
+      out: js + ".result.txt",
+      [implicitDeps]: [linked],
+    });
+  });
+
+  phony({ out: "integration", in: integrationTests });
+}
 
 writeFileSync("build.ninja", ninja.output);
