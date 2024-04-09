@@ -19,6 +19,12 @@ import { globSync } from "glob";
 import { platform } from "os";
 import toposort from "toposort";
 
+const extLookup = {
+  ".ts": ".js",
+  ".mts": ".mjs",
+  ".cts": ".cjs",
+};
+
 const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
@@ -126,8 +132,8 @@ const compilerOptions = {
   target: "ES2018",
   lib: ["ES2021"],
   outDir: "dist",
-  module: "NodeNext",
-  moduleResolution: "NodeNext",
+  module: "nodenext",
+  moduleResolution: "nodenext",
   declaration: true,
   esModuleInterop: true,
   forceConsistentCasingInFileNames: true,
@@ -361,10 +367,21 @@ const tars = toposort(
   });
 
   // Grab all TypeScript tests files and format them
-  const tests = globSync(join(cwd, "src", "*.test.ts"), {
+  const tests = globSync(join(cwd, "src", "*.mts"), {
     posix: true,
+    ignore: { ignored: (f) => f.name.endsWith(".d.mts") },
   }).map(formatAndLint);
 
+  const utilJS = copy({
+    in: join(cwd, "src", "util.mjs"),
+    out: join(cwd, "dist", "util.mjs"),
+  });
+  const utilDecl = copy({
+    in: join(cwd, "src", "util.d.mts"),
+    out: join(cwd, "dist", "util.d.mts"),
+  });
+
+  // Typecheck everything in one go
   const typechecked = typecheck({
     in: tests,
     out: join(cwd, "dist", "typechecked.stamp"),
@@ -373,20 +390,29 @@ const tars = toposort(
     [implicitDeps]: [linked],
   });
 
-  const integrationTests = typechecked.map((t) => {
+  // Transpile all files into JavaScript
+  const jsTests = typechecked.map((t) => {
     const file = getInput(t);
-    const js = transpile({
+    const ext = extname(file);
+    return transpile({
       in: t,
-      out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
+      out: join(cwd, "dist", basename(file, ext) + extLookup[ext]),
       args: transpileArgs,
-    });
-
-    return test({
-      in: js,
-      out: js + ".result.txt",
-      [implicitDeps]: [linked],
+      [orderOnlyDeps]: [utilDecl],
     });
   });
+
+  // Run all tests and make sure they have an order-only dependency
+  // on our non-test files. We have to continue using `implicitDeps` for
+  // our plugins as the `npmci` rule doesn't generate a `dyndep` yet
+  const integrationTests = jsTests.map((t) =>
+    test({
+      in: t,
+      out: getInput(t) + ".result.txt",
+      [implicitDeps]: [linked],
+      [orderOnlyDeps]: [utilJS],
+    }),
+  );
 
   phony({ out: "integration", in: integrationTests });
 }

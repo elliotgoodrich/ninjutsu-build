@@ -1,6 +1,5 @@
 {
   "name": "ninjutsu-build-configure",
-  "version": "0.0.1",
   "description": "Configuration script to generate ninja build files for @ninjutsu-build",
   "scripts": {
     "build": "ninja",
@@ -13,12 +12,13 @@
     "@biomejs/biome": "1.4.0",
     "@ninjutsu-build/biome": "^0.8.1",
     "@ninjutsu-build/bun": "^0.1.0",
-    "@ninjutsu-build/core": "^0.8.5",
+    "@ninjutsu-build/core": "^0.8.7",
     "@ninjutsu-build/node": "^0.9.1",
     "@ninjutsu-build/tsc": "^0.11.1",
+    "@swc/cli": "^0.3.10",
+    "@swc/core": "^1.4.11",
     "@types/toposort": "^2.0.7",
     "glob": "^10.3.10",
-    "swc": "^1.0.11",
     "toposort": "^2.0.2"
   }
 }
