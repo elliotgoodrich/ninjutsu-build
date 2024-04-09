@@ -53,6 +53,7 @@ test("constructor", () => {
   {
     const ninja = new NinjaBuilder();
     assert.equal(ninja.output, "");
+    assert.equal(ninja.outputDir, ".");
   }
   {
     const ninja = new NinjaBuilder({ builddir: "output" });
@@ -103,6 +104,20 @@ ninja_required_version = foo
 extra = 12
 `,
     );
+  }
+  {
+    const ninja = new NinjaBuilder(
+      {
+        builddir: "output",
+      },
+      "final/output/dir",
+    );
+    assert.equal(
+      ninja.output,
+      `builddir = output
+`,
+    );
+    assert.equal(ninja.outputDir, "final/output/dir");
   }
 });
 
