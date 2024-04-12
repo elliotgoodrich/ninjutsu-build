@@ -8,22 +8,41 @@ import {
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
 import { platform } from "os";
+import {
+  relative as relativeNative,
+  resolve as resolveNative,
+} from "node:path";
 
-const makeDepfile = "@ninjutsu-build/node/dist/makeDepfile.js";
-const hookRequire = "@ninjutsu-build/node/lib/hookRequire.cjs";
-const testReporter = "@ninjutsu-build/node/lib/testReporter.mjs";
+function resolvePath(ninja: NinjaBuilder, file: string): string {
+  return relativeNative(
+    resolveNative(process.cwd(), ninja.outputDir),
+    require.resolve(file),
+  ).replaceAll("\\", "/");
+}
 
-const importCode =
-  "import { register } from 'node:module';" +
-  "import { pathToFileURL } from 'node:url';" +
-  `register('${makeDepfile}', pathToFileURL('./'), { data: '$out' });`;
+function getImportCode(ninja: NinjaBuilder): string {
+  const makeDepfile = "@ninjutsu-build/node/dist/makeDepfile.js";
+  return (
+    "import { register } from 'node:module';" +
+    "import { pathToFileURL } from 'node:url';" +
+    `register('${resolvePath(
+      ninja,
+      makeDepfile,
+    )}', pathToFileURL('./'), { data: '$out' });`
+  );
+}
 
 // In order to pipe to $out we need to run with `cmd /c` on Windows.  Additionally
 // we mention `node.exe` with the file extension to avoid the `winpty node` alias.
 const node = platform() === "win32" ? "cmd /c node.exe" : "node";
 
-const command = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" $nodeArgs $in $args > $out`;
-const testCommand = `${node} --require "${hookRequire}" --import "data:text/javascript,${importCode}" --test --test-reporter=${testReporter} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $nodeArgs $in $args`;
+function getNodeCommand(ninja: NinjaBuilder): string {
+  const hookRequire = "@ninjutsu-build/node/lib/hookRequire.cjs";
+  return `${node} --require "${resolvePath(
+    ninja,
+    hookRequire,
+  )}" --import "data:text/javascript,${getImportCode(ninja)}"`;
+}
 
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
@@ -68,7 +87,7 @@ export function makeNodeRule(
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
   return ninja.rule(name, {
-    command,
+    command: getNodeCommand(ninja) + " $nodeArgs $in $args > $out",
     description: "Creating $out from 'node $in'",
     out: needs<string>(),
     in: needs<Input<string>>(),
@@ -122,8 +141,14 @@ export function makeNodeTestRule(
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
+  const testReporter = "@ninjutsu-build/node/lib/testReporter.mjs";
   return ninja.rule(name, {
-    command: testCommand,
+    command:
+      getNodeCommand(ninja) +
+      ` --test --test-reporter=${resolvePath(
+        ninja,
+        testReporter,
+      )} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $nodeArgs $in $args`,
     description: "Running test $in",
     out: needs<string>(),
     in: needs<Input<string>>(),

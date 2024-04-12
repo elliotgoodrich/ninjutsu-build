@@ -60,7 +60,7 @@ describe("node tests", () => {
         "console.log(two + ' + 1 = ' + three);\n",
     );
 
-    const ninja = new NinjaBuilder();
+    const ninja = new NinjaBuilder({}, dir);
     const node = makeNodeRule(ninja);
     const output = node({ in: script, out: "output.txt" });
     const output2 = node({ in: script2, out: "output2.txt" });
