@@ -8,20 +8,24 @@ import {
   validations,
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
-import { join } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { dirname } from "node:path/posix";
 import { platform, arch } from "os";
 
 const exe = platform() === "win32" ? ".exe" : "";
 const prefix = platform() === "win32" ? "cmd /c " : "";
+const touch = platform() === "win32" ? "type NUL >" : "touch";
 
 // Don't use `npx biome format` as this requires a node process and
 // the overhead is so much greater than running the biome executable.
-const biomeCommand = join(
-  "@biomejs",
-  `cli-${platform()}-${arch()}`,
-  `biome${exe}`,
-);
+function getBiomePath(ninja: NinjaBuilder): string {
+  return relative(
+    resolve(process.cwd(), ninja.outputDir),
+    require.resolve(
+      join("@biomejs", `cli-${platform()}-${arch()}`, `biome${exe}`),
+    ),
+  );
+}
 
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
@@ -90,7 +94,7 @@ export function makeFormatRule(
   const format = ninja.rule(name, {
     command:
       prefix +
-      join("node_modules", biomeCommand) +
+      getBiomePath(ninja) +
       " format $args --config-path $configPath --write $in > $out",
     description: "Formatting $in",
     in: needs<Input<string>>(),
@@ -194,9 +198,8 @@ export function makeFormatToRule(
   const cat = platform() === "win32" ? "type" : "cat";
   const inVar = platform() === "win32" ? "$inBackSlash" : "$in";
   const formatTo = ninja.rule(name, {
-    command: `${prefix}${cat} ${inVar} | ${join(
-      "node_modules",
-      biomeCommand,
+    command: `${prefix}${cat} ${inVar} | ${getBiomePath(
+      ninja,
     )} format $args --config-path $configPath --stdin-file-path=$in > $out`,
     description: "Formatting $in to $out",
     in: needs<Input<string>>(),
@@ -298,8 +301,8 @@ export function makeCheckFormattedRule(
   const checkFormatted = ninja.rule(name, {
     command:
       prefix +
-      join("node_modules", biomeCommand) +
-      " format $args --config-path $configPath $in > $out",
+      getBiomePath(ninja) +
+      ` format $args --config-path $configPath $in && ${touch} $out`,
     description: "Checking format of $in",
     in: needs<Input<string>>(),
     out: needs<string>(),
@@ -430,8 +433,8 @@ export function makeLintRule(
   const lint = ninja.rule(name, {
     command:
       prefix +
-      join("node_modules", biomeCommand) +
-      " lint $args --config-path $configPath $in > $out",
+      getBiomePath(ninja) +
+      ` lint $args --config-path $configPath $in && ${touch} $out`,
     description: "Linting $in",
     in: needs<Input<string>>(),
     out: needs<string>(),
