@@ -19,6 +19,17 @@ import ts from "typescript";
 import { platform } from "os";
 import { join } from "node:path";
 import { relative } from "node:path/posix";
+import {
+  relative as relativeNative,
+  resolve as resolveNative,
+} from "node:path";
+
+function getRunTSCPath(ninja: NinjaBuilder): string {
+  return relativeNative(
+    resolveNative(process.cwd(), ninja.outputDir),
+    require.resolve(join("@ninjutsu-build", "tsc", "dist", "runTSC.mjs")),
+  );
+}
 
 function compilerOptionToArray(
   name: string,
@@ -120,7 +131,9 @@ export function makeTypeCheckRule(
   const typecheck = ninja.rule(name, {
     command:
       prefix +
-      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in",
+      `node ${getRunTSCPath(
+        ninja,
+      )} --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in`,
     description: "Typechecking $in",
     in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
@@ -230,7 +243,9 @@ export function makeTSCRule(
   const tsc = ninja.rule(name, {
     command:
       prefix +
-      "node node_modules/@ninjutsu-build/tsc/dist/runTSC.mjs --cwd $cwd --out $out --depfile $out.depfile --listFiles $args -- $in",
+      `node ${getRunTSCPath(
+        ninja,
+      )} --cwd $cwd --out $out --depfile $out.depfile --listFiles $args -- $in`,
     description: "Compiling $in",
     depfile: "$out.depfile",
     deps: "gcc",

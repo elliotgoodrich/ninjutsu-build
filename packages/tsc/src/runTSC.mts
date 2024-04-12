@@ -92,7 +92,9 @@ async function run(): Promise<void> {
           : path;
       };
       for (const line of lines) {
-        deps += " " + makeRelative(line).replaceAll("\\", "/").trim();
+        if (line !== "") {
+          deps += " " + makeRelative(line).replaceAll("\\", "/").trim();
+        }
       }
 
       writeFileSync(depfile, deps);
