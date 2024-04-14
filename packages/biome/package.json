@@ -24,8 +24,5 @@
   "peerDependencies": {
     "@biomejs/biome": "1.x",
     "@ninjutsu-build/core": "^0.8.7"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.6"
   }
 }

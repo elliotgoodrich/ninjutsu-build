@@ -1,0 +1,19 @@
+{
+  "description": "Configuration script to generate ninja build files for @ninjutsu-build",
+  "author": "Elliot Goodrich",
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "1.4.0",
+    "@ninjutsu-build/biome": "^0.8.2",
+    "@ninjutsu-build/bun": "^0.1.2",
+    "@ninjutsu-build/core": "^0.8.8",
+    "@ninjutsu-build/node": "^0.9.4",
+    "@ninjutsu-build/tsc": "^0.12.0",
+    "@swc/cli": "^0.3.10",
+    "@swc/core": "^1.4.11",
+    "@types/node": "^20.12.7",
+    "@types/toposort": "^2.0.7",
+    "glob": "^10.3.10",
+    "toposort": "^2.0.2"
+  }
+}

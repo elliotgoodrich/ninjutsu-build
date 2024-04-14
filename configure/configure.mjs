@@ -13,8 +13,21 @@ import {
   makeLintRule,
 } from "@ninjutsu-build/biome";
 import { makeTranspileRule } from "@ninjutsu-build/bun";
-import { basename, dirname, extname, relative, join } from "node:path/posix";
+import {
+  basename,
+  dirname,
+  extname,
+  relative,
+  resolve,
+  join,
+} from "node:path/posix";
+import {
+  resolve as resolveNative,
+  relative as relativeNative,
+  sep,
+} from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { globSync } from "glob";
 import { platform } from "os";
 import toposort from "toposort";
@@ -96,8 +109,12 @@ function makeCopyRule(ninja) {
 }
 
 function makeSWCRule(ninja) {
+  const swc = relativeNative(
+    resolveNative(process.cwd(), ninja.outputDir),
+    fileURLToPath(import.meta.resolve("@swc/cli")),
+  );
   return ninja.rule("swc", {
-    command: prefix + "npx swc $in -o $out -q $args",
+    command: `${prefix}node ${swc} $in -o $out -q $args`,
     description: "Transpiling $in",
   });
 }
@@ -128,12 +145,24 @@ function addBiomeConfig(rule, configPath) {
   };
 }
 
+// Tell TypeScript to look for `@types/node` package installed in the
+// `configure/node_modules` directory, otherwise it'll fail to find it
+const typeRoots = [
+  relativeNative(
+    process.cwd(),
+    fileURLToPath(import.meta.resolve("@types/node/package.json")),
+  )
+    .split(sep)
+    .slice(0, -2)
+    .join("/"),
+];
+
 const compilerOptions = {
   target: "ES2018",
   lib: ["ES2021"],
-  outDir: "dist",
   module: "nodenext",
   moduleResolution: "nodenext",
+  typeRoots,
   declaration: true,
   esModuleInterop: true,
   forceConsistentCasingInFileNames: true,
@@ -173,7 +202,7 @@ const ci = makeNpmCiRule(ninja);
 let checkFormatted;
 
 const toolsInstalled = ci({
-  in: "package.json",
+  in: "configure/package.json",
   [validations]: (out) => {
     checkFormatted = addBiomeConfig(
       inject(makeCheckFormattedRule(ninja), {
@@ -183,7 +212,7 @@ const toolsInstalled = ci({
     );
     // Add a validation that `package.json` is formatted correctly.
     // If we formatted after running `npmci` it would cause us to run it again
-    return checkFormatted({ in: "package.json" })[validations];
+    return checkFormatted({ in: "configure/package.json" })[validations];
   },
 });
 
@@ -218,7 +247,7 @@ const transpileArgs = useBun
 
 const { phony } = ninja;
 
-format({ in: "configure.mjs", cwd: "." });
+format({ in: "configure/configure.mjs" });
 
 const scope = "@ninjutsu-build/";
 const graph = {};
@@ -278,8 +307,10 @@ const tars = toposort(
     // Transpile the TypeScript into JavaScript once formatting has finished
     const dist = tsc({
       in: ts,
-      compilerOptions: { ...compilerOptions, rootDir: "src" },
-      cwd,
+      compilerOptions: {
+        ...compilerOptions,
+        outDir: join(cwd, "dist"),
+      },
       // We must use `implicitDeps` instead of `orderOnlyDeps` as the `npmci` and
       // `npmlink` rules do not yet use `dyndeps` to describe what files they
       // creates in `node_modules`
@@ -298,7 +329,6 @@ const tars = toposort(
           in: tests,
           out: join(cwd, "dist", "typechecked.stamp"),
           compilerOptions,
-          cwd,
           [implicitDeps]: [linked],
           // Only run this after generating all the TypeScript definition files for the
           // library files.
@@ -386,7 +416,6 @@ const tars = toposort(
     in: tests,
     out: join(cwd, "dist", "typechecked.stamp"),
     compilerOptions,
-    cwd,
     [implicitDeps]: [linked],
   });
 

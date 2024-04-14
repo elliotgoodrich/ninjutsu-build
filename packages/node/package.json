@@ -30,9 +30,5 @@
   },
   "peerDependencies": {
     "@ninjutsu-build/core": "^0.8.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.9.0",
-    "typescript": "^5.2.2"
   }
 }
