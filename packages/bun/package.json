@@ -23,8 +23,5 @@
   },
   "peerDependencies": {
     "@ninjutsu-build/core": "^0.8.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20.10.6"
   }
 }
