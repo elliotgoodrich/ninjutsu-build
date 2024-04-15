@@ -12,12 +12,17 @@ import {
   relative as relativeNative,
   resolve as resolveNative,
 } from "node:path";
+import { isAbsolute } from "node:path/posix";
 
 function resolvePath(ninja: NinjaBuilder, file: string): string {
-  return relativeNative(
+  const path = relativeNative(
     resolveNative(process.cwd(), ninja.outputDir),
     require.resolve(file),
   ).replaceAll("\\", "/");
+  // Make sure that relative paths start with "./" or "../" as node
+  // will resolve "foo/bar.js" as "node_modules/foo/bar.js" instead
+  // of "./foo/bar.js".
+  return !isAbsolute(path) && !path.startsWith("../") ? "./" + path : path;
 }
 
 function getImportCode(ninja: NinjaBuilder): string {
