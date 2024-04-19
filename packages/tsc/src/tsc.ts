@@ -3,7 +3,6 @@ import {
   type Input,
   getInput,
   getInputs,
-  escapePath,
   needs,
   implicitDeps,
   implicitOut,
@@ -17,17 +16,23 @@ import type {
 } from "typescript";
 import ts from "typescript";
 import { platform } from "os";
-import { join } from "node:path";
-import { relative } from "node:path/posix";
-import {
-  relative as relativeNative,
-  resolve as resolveNative,
-} from "node:path";
+import { relative, resolve } from "node:path";
+
+// Use `node.exe` on windows to avoid the `winpty node` alias and for a
+// small increase in performance.
+const node = platform() === "win32" ? "node.exe" : "node";
 
 function getRunTSCPath(ninja: NinjaBuilder): string {
-  return relativeNative(
-    resolveNative(process.cwd(), ninja.outputDir),
-    require.resolve(join("@ninjutsu-build", "tsc", "dist", "runTSC.mjs")),
+  return relative(
+    resolve(process.cwd(), ninja.outputDir),
+    require.resolve("./runTSC.mjs"),
+  );
+}
+
+function getTSCPath(ninja: NinjaBuilder): string {
+  return relative(
+    resolve(process.cwd(), ninja.outputDir),
+    require.resolve("typescript/bin/tsc"),
   );
 }
 
@@ -122,7 +127,6 @@ export function makeTypeCheckRule(
   in: readonly Input<string>[];
   out: O;
   compilerOptions?: CompilerOptions;
-  cwd?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: string | readonly string[];
   [implicitOut]?: string | readonly string[];
@@ -131,31 +135,28 @@ export function makeTypeCheckRule(
   const typecheck = ninja.rule(name, {
     command:
       prefix +
-      `node ${getRunTSCPath(
+      `${node} ${getRunTSCPath(ninja)} --tsc ${getTSCPath(
         ninja,
-      )} --cwd $cwd --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in`,
+      )} --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in`,
     description: "Typechecking $in",
     in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
     depfile: "$out.depfile",
     deps: "gcc",
     args: needs<string>(),
-    cwd: needs<string>(),
   });
   return <O extends string>(a: {
     in: readonly Input<string>[];
     out: O;
     compilerOptions?: CompilerOptions;
-    cwd?: string;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): { file: string; [validations]: O }[] => {
-    const { compilerOptions = {}, cwd = ".", ...rest } = a;
+    const { compilerOptions = {}, ...rest } = a;
     const typechecked = typecheck({
       ...rest,
-      cwd,
       args: compilerOptionsToArray(compilerOptions).join(" "),
     });
     return a.in.map((file) => ({
@@ -234,7 +235,6 @@ export function makeTSCRule(
 ): (a: {
   in: readonly Input<string>[];
   compilerOptions?: CompilerOptions;
-  cwd?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: string | readonly string[];
   [implicitOut]?: string | readonly string[];
@@ -243,21 +243,19 @@ export function makeTSCRule(
   const tsc = ninja.rule(name, {
     command:
       prefix +
-      `node ${getRunTSCPath(
+      `${node} ${getRunTSCPath(ninja)} --tsc ${getTSCPath(
         ninja,
-      )} --cwd $cwd --out $out --depfile $out.depfile --listFiles $args -- $in`,
+      )} --out $out --depfile $out.depfile --listFiles $args -- $in`,
     description: "Compiling $in",
     depfile: "$out.depfile",
     deps: "gcc",
     in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
-    cwd: needs<string>(),
     args: needs<string>(),
   });
   return (a: {
     in: readonly Input<string>[];
     compilerOptions?: CompilerOptions;
-    cwd?: string;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
@@ -265,28 +263,23 @@ export function makeTSCRule(
   }): readonly string[] => {
     const {
       compilerOptions = {},
-      cwd = ".",
       [validations]: _validations,
       [implicitOut]: _implicitOut = [],
       ...rest
     } = a;
-    const input = getInputs(a.in).map((f) => relative(cwd, f));
     const argsArr = compilerOptionsToArray(compilerOptions);
-    const commandLine = ts.parseCommandLine(input.concat(argsArr));
+    const commandLine = ts.parseCommandLine(getInputs(a.in).concat(argsArr));
 
     // We need to set this to something, else we get a debug exception
     // in `getOutputFileNames`
     commandLine.options.configFilePath = "";
 
-    const out = commandLine.fileNames
-      .flatMap((path: string) =>
-        ts.getOutputFileNames(commandLine, path, false),
-      )
-      .map((p) => join(cwd, escapePath(p)).replaceAll("\\", "/"));
+    const out = commandLine.fileNames.flatMap((path: string) =>
+      ts.getOutputFileNames(commandLine, path, false),
+    );
     tsc({
       ...rest,
       out: out[0],
-      cwd,
       args: argsArr.join(" "),
       [implicitOut]: out.slice(1).concat(_implicitOut),
       [validations]:
