@@ -1,25 +1,30 @@
 import { exec } from "node:child_process";
 import { argv } from "node:process";
 import { writeFileSync } from "node:fs";
-import { isAbsolute, relative, resolve, join } from "node:path";
+import { isAbsolute, relative } from "node:path";
 import { promisify } from "node:util";
 
 function parseArgs(args: readonly string[]): {
+  tsc: string;
   depfile?: string;
   out?: string;
   touch?: string;
-  cwd?: string;
   tsArgs: readonly string[];
   input: readonly string[];
 } {
+  let tsc: string | undefined = undefined;
   let depfile: string | undefined = undefined;
   let touch: string | undefined = undefined;
   let out: string | undefined = undefined;
-  let cwd: string | undefined = undefined;
   let input: string[] = [];
   let tsArgs: string[] = [];
   for (let i = 2; i < argv.length; ++i) {
     switch (argv[i]) {
+      case "--tsc":
+        if (++i < argv.length) {
+          tsc = argv[i];
+        }
+        break;
       case "--depfile":
         if (++i < argv.length) {
           depfile = argv[i];
@@ -35,11 +40,6 @@ function parseArgs(args: readonly string[]): {
           touch = argv[i];
         }
         break;
-      case "--cwd":
-        if (++i < argv.length) {
-          cwd = argv[i];
-        }
-        break;
       default: {
         const splitIndex = args.indexOf("--", i);
         if (splitIndex === -1) {
@@ -51,40 +51,37 @@ function parseArgs(args: readonly string[]): {
       }
     }
   }
+  if (tsc === undefined) {
+    throw new Error("--tsc must be specified");
+  }
   if ((depfile === undefined) !== (out === undefined)) {
     throw new Error(
       "Either both --depfile and --out are specified, or neither are!",
     );
   }
-  return { depfile, out, touch, cwd, tsArgs, input };
+  return { tsc, depfile, out, touch, tsArgs, input };
 }
 
 async function run(): Promise<void> {
   try {
-    const { depfile, touch, out, cwd, tsArgs, input } = parseArgs(argv);
+    const { tsc, depfile, touch, out, tsArgs, input } = parseArgs(argv);
     if (depfile !== undefined) {
-      const files =
-        cwd !== undefined
-          ? input.map((i) => relative(cwd, i).replaceAll("\\", "/"))
-          : input;
       const { stdout } = await promisify(exec)(
-        `cd ${cwd} && npx tsc ${tsArgs.concat(files).join(" ")}`,
+        `node ${tsc} ${tsArgs.concat(input).join(" ")}`,
       );
       const lines = stdout.split("\n");
-      const scriptCwd = resolve();
       let deps = out + ":";
+      const cwd = process.cwd();
       const makeRelative = (path: string) => {
         if (!isAbsolute(path)) {
-          // Relative paths at this point are within the project, they need to be
-          // adjusted to add back the `cwd` prefix that we removed on the inputs
-          return join(cwd ?? "", path);
+          return path;
         }
 
         // Absolute paths are most likely references to things inside `node_modules`,
         // but could be absolute paths given by the user to something else.  If the
         // path is within the current working directory, replace with the relative
         // path, otherwise keep it as absolute.
-        const relativeAttempt = relative(scriptCwd, path);
+        const relativeAttempt = relative(cwd, path);
         return relativeAttempt &&
           !relativeAttempt.startsWith("..") &&
           !isAbsolute(relativeAttempt)
