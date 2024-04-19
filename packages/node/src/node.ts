@@ -8,15 +8,12 @@ import {
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
 import { platform } from "os";
-import {
-  relative as relativeNative,
-  resolve as resolveNative,
-} from "node:path";
+import { relative, resolve } from "node:path";
 import { isAbsolute } from "node:path/posix";
 
 function resolvePath(ninja: NinjaBuilder, file: string): string {
-  const path = relativeNative(
-    resolveNative(process.cwd(), ninja.outputDir),
+  const path = relative(
+    resolve(process.cwd(), ninja.outputDir),
     require.resolve(file),
   ).replaceAll("\\", "/");
   // Make sure that relative paths start with "./" or "../" as node
@@ -26,13 +23,12 @@ function resolvePath(ninja: NinjaBuilder, file: string): string {
 }
 
 function getImportCode(ninja: NinjaBuilder): string {
-  const makeDepfile = "@ninjutsu-build/node/dist/makeDepfile.js";
   return (
     "import { register } from 'node:module';" +
     "import { pathToFileURL } from 'node:url';" +
     `register('${resolvePath(
       ninja,
-      makeDepfile,
+      "./makeDepfile.js",
     )}', pathToFileURL('./'), { data: '$out' });`
   );
 }
@@ -42,10 +38,9 @@ function getImportCode(ninja: NinjaBuilder): string {
 const node = platform() === "win32" ? "cmd /c node.exe" : "node";
 
 function getNodeCommand(ninja: NinjaBuilder): string {
-  const hookRequire = "@ninjutsu-build/node/lib/hookRequire.cjs";
   return `${node} --require "${resolvePath(
     ninja,
-    hookRequire,
+    "../lib/hookRequire.cjs",
   )}" --import "data:text/javascript,${getImportCode(ninja)}"`;
 }
 
@@ -146,13 +141,12 @@ export function makeNodeTestRule(
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
-  const testReporter = "@ninjutsu-build/node/lib/testReporter.mjs";
   return ninja.rule(name, {
     command:
       getNodeCommand(ninja) +
       ` --test --test-reporter=${resolvePath(
         ninja,
-        testReporter,
+        "../lib/testReporter.mjs",
       )} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $nodeArgs $in $args`,
     description: "Running test $in",
     out: needs<string>(),
