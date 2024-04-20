@@ -2,6 +2,7 @@ import { exec } from "node:child_process";
 import { argv } from "node:process";
 import { writeFileSync } from "node:fs";
 import { isAbsolute, relative } from "node:path";
+import { realpathSync } from "node:fs";
 import { promisify } from "node:util";
 
 function parseArgs(args: readonly string[]): {
@@ -69,7 +70,7 @@ async function run(): Promise<void> {
       const { stdout } = await promisify(exec)(
         `node ${tsc} ${tsArgs.concat(input).join(" ")}`,
       );
-      const lines = stdout.split("\n");
+      const lines = stdout.split("\n").map((l) => l.trim());
       let deps = out + ":";
       const cwd = process.cwd();
       const makeRelative = (path: string) => {
@@ -90,7 +91,10 @@ async function run(): Promise<void> {
       };
       for (const line of lines) {
         if (line !== "") {
-          deps += " " + makeRelative(line).replaceAll("\\", "/").trim();
+          // Look at the canonical path to resolve symlinks and find the original
+          // path.  This will allow us to handle dependencies acros monorepos.
+          deps +=
+            " " + makeRelative(realpathSync(line)).replaceAll("\\", "/").trim();
         }
       }
 
