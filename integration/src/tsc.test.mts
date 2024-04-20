@@ -59,7 +59,6 @@ describe("tsc tests", () => {
       );
       return "imp/" + subtract;
     })();
-    assert.strictEqual(subtract, "imp/subtract.cts");
 
     const script = "script.mts";
     writeFileSync(
@@ -118,12 +117,10 @@ describe("tsc tests", () => {
     for (const out of output) {
       assert.notStrictEqual(deps[out].indexOf(negate), -1, `Missing ${negate}`);
       assert.notStrictEqual(deps[out].indexOf(add), -1, `Missing ${add}`);
-      // TODO: Change this to `subtract` and have a dependency on the canonical
-      // file rather than the symlink path
       assert.notStrictEqual(
-        deps[out].indexOf("src/subtract.cts"),
+        deps[out].indexOf(subtract),
         -1,
-        "Missing src/subtract.cts",
+        `Missing ${subtract}`,
       );
     }
 
@@ -136,9 +133,9 @@ describe("tsc tests", () => {
         `${add} should be missing`,
       );
       assert.strictEqual(
-        deps[out].indexOf("src/subtract.cts"),
+        deps[out].indexOf(subtract),
         -1,
-        "src/subtract.cts should be missing",
+        `${subtract} should be missing`,
       );
     }
   });
