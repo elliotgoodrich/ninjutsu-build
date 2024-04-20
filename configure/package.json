@@ -8,7 +8,7 @@
     "@ninjutsu-build/bun": "^0.1.2",
     "@ninjutsu-build/core": "^0.8.8",
     "@ninjutsu-build/node": "^0.9.4",
-    "@ninjutsu-build/tsc": "^0.12.0",
+    "@ninjutsu-build/tsc": "^0.12.1",
     "@swc/cli": "^0.3.10",
     "@swc/core": "^1.4.11",
     "@types/node": "^20.12.7",
