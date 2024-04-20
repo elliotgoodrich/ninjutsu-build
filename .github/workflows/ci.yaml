@@ -24,5 +24,5 @@ jobs:
         cache: 'npm'
     - uses: seanmiddleditch/gha-setup-ninja@master
     - run: npm ci --prefix configure
-    - run: npm run configure -- --ci
+    - run: npm run configure
     - run: ninja -k 0

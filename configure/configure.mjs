@@ -13,14 +13,7 @@ import {
   makeLintRule,
 } from "@ninjutsu-build/biome";
 import { makeTranspileRule } from "@ninjutsu-build/bun";
-import {
-  basename,
-  dirname,
-  extname,
-  relative,
-  resolve,
-  join,
-} from "node:path/posix";
+import { basename, dirname, extname, relative, join } from "node:path/posix";
 import {
   resolve as resolveNative,
   relative as relativeNative,
@@ -31,6 +24,11 @@ import { fileURLToPath } from "node:url";
 import { globSync } from "glob";
 import { platform } from "os";
 import toposort from "toposort";
+import isCi from "is-ci";
+
+if (isCi) {
+  console.log("Running in CI mode");
+}
 
 const extLookup = {
   ".ts": ".js",
@@ -42,7 +40,6 @@ const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
 const useBun = process.argv.includes("--bun");
-const inCi = process.argv.includes("--ci");
 
 function makeNpmCiRule(ninja) {
   const ci = ninja.rule("npmci", {
@@ -223,7 +220,7 @@ const typecheck = inject(makeTypeCheckRule(ninja), {
 });
 const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
-const format = inCi
+const format = isCi
   ? checkFormatted
   : addBiomeConfig(
       inject(makeFormatRule(ninja), {
