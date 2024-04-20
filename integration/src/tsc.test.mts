@@ -72,12 +72,14 @@ describe("tsc tests", () => {
         "console.log(subtract(4, 5));\n",
     );
 
+    // Intentionally misuse `add` to show that `require`d files in CommonJS
+    // are not typechecked
     const script2 = "script.cts";
     writeFileSync(
       join(dir, script2),
       "const { add } = require('./add.cjs');\n" +
         "const { subtract } = require('./src/subtract.cjs');\n" +
-        "console.log(add(2, 3));\n" +
+        "console.log(add('2', 3));\n" +
         "console.log(subtract(4, 5));\n",
     );
 
@@ -125,14 +127,18 @@ describe("tsc tests", () => {
       );
     }
 
-    // TODO: `script.cts` is **missing** all of the dependencies we would
-    // expect and this needs to be fixed
+    // No typechecking of `.cts` `require`d files so `tsc` doesn't look at
+    // the dependencies
     for (const out of output2) {
-      assert.strictEqual(deps[out].indexOf(add), -1, `Missing ${add}`);
+      assert.strictEqual(
+        deps[out].indexOf(add),
+        -1,
+        `${add} should be missing`,
+      );
       assert.strictEqual(
         deps[out].indexOf("src/subtract.cts"),
         -1,
-        "Missing src/subtract.cts",
+        "src/subtract.cts should be missing",
       );
     }
   });
