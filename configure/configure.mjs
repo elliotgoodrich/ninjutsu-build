@@ -1,7 +1,6 @@
 import {
   NinjaBuilder,
   getInput,
-  implicitDeps,
   orderOnlyDeps,
   validations,
 } from "@ninjutsu-build/core";
@@ -13,7 +12,7 @@ import {
   makeLintRule,
 } from "@ninjutsu-build/biome";
 import { makeTranspileRule } from "@ninjutsu-build/bun";
-import { basename, dirname, extname, relative, join } from "node:path/posix";
+import { basename, dirname, extname, join, relative } from "node:path/posix";
 import {
   resolve as resolveNative,
   relative as relativeNative,
@@ -23,11 +22,23 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { globSync } from "glob";
 import { platform } from "os";
-import toposort from "toposort";
 import isCi from "is-ci";
 
 if (isCi) {
   console.log("Running in CI mode");
+}
+
+// Copy from `@ninjutsu-build/core` for the moment until we widen the
+// contract of `phony`
+function getOrderOnlyDeps(input) {
+  if (typeof input !== "object") {
+    return input;
+  }
+
+  if (Array.isArray(input)) {
+    return input.map(getOrderOnlyDeps);
+  }
+  return input[orderOnlyDeps] ?? input.file;
 }
 
 const extLookup = {
@@ -36,7 +47,6 @@ const extLookup = {
   ".cts": ".cjs",
 };
 
-const touch = platform() == "win32" ? "type NUL > $out" : "touch $out";
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
 const useBun = process.argv.includes("--bun");
@@ -56,25 +66,16 @@ function makeNpmCiRule(ninja) {
   };
 }
 
-function makeNpmLinkRule(ninja) {
-  const ci = ninja.rule("npmlink", {
-    command:
-      prefix + "npm install --prefix $cwd --silent --no-save $pkgs && " + touch,
-    description: "npm link $pkgs ($cwd)",
+function makeNpmCiWorkspaces(ninja) {
+  const ci = ninja.rule("npmciworkspaces", {
+    command: prefix + "npm ci --workspaces --silent",
+    description: "npm ci --workspaces",
   });
-  return (a) => {
-    const input = getInput(a.in);
-    const cwd = dirname(input);
-    const pkgs = a.pkgs;
-    const deps = a[implicitDeps] ?? [];
-    return ci({
+  return (a) =>
+    ci({
       ...a,
-      out: `$builddir/.ninjutsu-build/npmlink/${input}`,
-      pkgs: pkgs.join(" "),
-      cwd,
-      [implicitDeps]: deps.concat(pkgs),
+      out: join(dirname(getInput(a.in)), "node_modules", ".package-lock.json"),
     });
-  };
 }
 
 function makeTarRule(ninja) {
@@ -133,17 +134,17 @@ function inject(rule, args) {
   };
 }
 
-function addBiomeConfig(rule, configPath) {
+function addBiomeConfig(rule) {
   return (a) => {
     return rule({
       ...a,
-      configPath,
+      configPath: join("configure", "biome.json"),
     });
   };
 }
 
 // Tell TypeScript to look for `@types/node` package installed in the
-// `configure/node_modules` directory, otherwise it'll fail to find it
+// workspace `node_modules` directory, otherwise it'll fail to find it
 const typeRoots = [
   relativeNative(
     process.cwd(),
@@ -186,9 +187,16 @@ const ninja = new NinjaBuilder({
   ninja_required_version: "1.11",
 });
 
+const workspacePkg = "package.json";
+const workspaceJSON = JSON.parse(readFileSync(workspacePkg));
+
 ninja.output += "\n";
 ninja.comment("Rules + Installation");
 const ci = makeNpmCiRule(ninja);
+const ciworkpace = makeNpmCiWorkspaces(ninja);
+
+const { phony } = ninja;
+const packagesLinked = ciworkpace({ in: workspacePkg });
 
 // We would like to check whether `package.json` is formatted correctly.
 // Most of the rules inject a build-order dependency on `npm ci` having
@@ -205,7 +213,6 @@ const toolsInstalled = ci({
       inject(makeCheckFormattedRule(ninja), {
         [orderOnlyDeps]: out,
       }),
-      "biome.json",
     );
     // Add a validation that `package.json` is formatted correctly.
     // If we formatted after running `npmci` it would cause us to run it again
@@ -213,7 +220,6 @@ const toolsInstalled = ci({
   },
 });
 
-const link = makeNpmLinkRule(ninja);
 const tsc = inject(makeTSCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
 const typecheck = inject(makeTypeCheckRule(ninja), {
   [orderOnlyDeps]: toolsInstalled,
@@ -226,15 +232,13 @@ const format = isCi
       inject(makeFormatRule(ninja), {
         [orderOnlyDeps]: toolsInstalled,
       }),
-      "biome.json",
     );
+const copy = makeCopyRule(ninja);
 const lint = addBiomeConfig(
   inject(makeLintRule(ninja), {
     [orderOnlyDeps]: toolsInstalled,
   }),
-  "biome.json",
 );
-const copy = makeCopyRule(ninja);
 const transpile = useBun
   ? makeTranspileRule(ninja)
   : inject(makeSWCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
@@ -242,143 +246,127 @@ const transpileArgs = useBun
   ? "--target=node --no-bundle"
   : "-C jsc.target=es2018";
 
-const { phony } = ninja;
-
 format({ in: "configure/configure.mjs" });
 
 const scope = "@ninjutsu-build/";
-const graph = {};
-const tars = toposort(
-  globSync("*", { posix: true, cwd: "packages" }).flatMap((packageName) => {
-    const packageJSON = JSON.parse(
-      readFileSync(join("packages", packageName, "package.json")).toString(),
-    );
-    const deps = {
-      ...packageJSON.dependencies,
-      ...packageJSON.devDependencies,
-      ...packageJSON.peerDependencies,
-    };
-    graph[packageName] = Object.keys(deps)
-      .filter((dep) => dep.startsWith(scope))
-      .map((dep) => dep.substring(scope.length));
-    return graph[packageName].map((dep) => [packageName, dep]);
-  }),
-)
-  .reverse()
-  .reduce((packages, packageName) => {
-    // Collect all the generated JavaScript tgz packages
-    ninja.output += "\n";
+for (const cwd of workspaceJSON.workspaces) {
+  if (cwd === "integration") {
+    // Handle the integration package separately for the moment
+    continue;
+  }
+  const localPKGJSON = JSON.parse(
+    readFileSync(join(cwd, "package.json")).toString(),
+  );
 
-    const cwd = join("packages", packageName);
-    ninja.comment(cwd);
+  // Build up our dependencies that come from npm or locally linking (we
+  // assume there will be a "@ninjutsu-build/foo/build" target for when a
+  // dependency is built and usable)
+  const dependencies = [packagesLinked].concat(
+    Object.keys({
+      ...localPKGJSON.dependencies,
+      ...localPKGJSON.devDependencies,
+      ...localPKGJSON.peerDependencies,
+    })
+      .filter((d) => d.startsWith(scope))
+      .map((d) => `${d}/build`),
+  );
 
-    // Format package.json
-    const packageJSON = format({ in: join(cwd, "package.json") });
+  ninja.output += "\n";
+  ninja.comment(cwd);
 
-    // Run `npm ci`
-    const dependenciesInstalled = ci({ in: packageJSON });
+  // Format package.json
+  const packageJSON = format({ in: join(cwd, "package.json") });
 
-    // If `packageJSON` is changed (and only after we have run `npm ci`)
-    // install our packages locally
-    const pkgs = graph[packageName].map((name) => packages[name]);
-    const linked =
-      pkgs.length > 0
-        ? link({
-            in: packageJSON,
-            pkgs,
-            [orderOnlyDeps]: [dependenciesInstalled],
-          })
-        : dependenciesInstalled;
+  // Grab all TypeScript source files and format them
+  const ts = globSync(join(cwd, "src", "*.{mts,ts}"), {
+    posix: true,
+    ignore: { ignored: (f) => f.name.endsWith(".test.ts") },
+  }).map(formatAndLint);
 
-    // Grab all TypeScript source files and format them
-    const ts = globSync(join(cwd, "src", "*.{mts,ts}"), {
-      posix: true,
-      ignore: { ignored: (f) => f.name.endsWith(".test.ts") },
-    }).map(formatAndLint);
+  // In the `lib` directory we have JavaScript files and TS declaration files
+  const lib = globSync(join(cwd, "lib", "*.*"), {
+    posix: true,
+  }).map(formatAndLint);
 
-    // In the `lib` directory we have JavaScript files and TS declaration files
-    const lib = globSync(join(cwd, "lib", "*.*"), {
-      posix: true,
-    }).map(formatAndLint);
+  // Transpile the TypeScript into JavaScript once formatting has finished
+  const dist = tsc({
+    in: ts,
+    compilerOptions: {
+      ...compilerOptions,
+      outDir: join(cwd, "dist"),
+    },
+    [orderOnlyDeps]: [...dependencies, ...lib],
+  });
 
-    // Transpile the TypeScript into JavaScript once formatting has finished
-    const dist = tsc({
-      in: ts,
-      compilerOptions: {
-        ...compilerOptions,
-        outDir: join(cwd, "dist"),
-      },
-      // We must use `implicitDeps` instead of `orderOnlyDeps` as the `npmci` and
-      // `npmlink` rules do not yet use `dyndeps` to describe what files they
-      // creates in `node_modules`
-      [implicitDeps]: [linked],
-    });
+  // Create a phony target for when the package has been built and is consumable
+  // from other packages
+  const buildPackage = phony({
+    out: `${localPKGJSON.name}/build`,
+    in: [packageJSON, ...dist, ...lib].map(getOrderOnlyDeps),
+  });
 
-    // Grab all TypeScript tests files and format them
-    const tests = globSync(join(cwd, "src", "*.test.ts"), {
-      posix: true,
-    }).map(formatAndLint);
+  // Grab all TypeScript tests files and format them
+  const tests = globSync(join(cwd, "src", "*.test.ts"), {
+    posix: true,
+  }).map(formatAndLint);
 
-    // Type check all the tests
-    const testTargets = (() => {
-      if (tests.length !== 0) {
-        return typecheck({
-          in: tests,
-          out: join(cwd, "dist", "typechecked.stamp"),
-          compilerOptions,
-          [implicitDeps]: [linked],
-          // Only run this after generating all the TypeScript definition files for the
-          // library files.
-          [orderOnlyDeps]: dist,
-        }).map((t) => {
-          const file = getInput(t);
-          const js = transpile({
-            in: t,
-            out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
-            args: transpileArgs,
-          });
-          return test({
-            in: js,
-            out: join("$builddir", packageName, `${js}.result.txt`),
-            [implicitDeps]: [linked],
-            // Only run this after transpiling the library from TS to JS
-            [orderOnlyDeps]: dist,
-          });
+  // Type check all the tests
+  const testTargets = (() => {
+    if (tests.length !== 0) {
+      return typecheck({
+        in: tests,
+        out: join(cwd, "dist", "typechecked.stamp"),
+        compilerOptions,
+        [orderOnlyDeps]: [...dependencies, ...dist],
+      }).map((t) => {
+        const file = getInput(t);
+        const js = transpile({
+          in: t,
+          out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
+          args: transpileArgs,
         });
-      } else {
-        return [];
-      }
-    })();
-
-    // Prepare our files to create a tgz of our package, include
-    //   - README.md
-    //   - package.json
-    //   - contents of `lib`
-    //   - contents of `dist`
-    const stageForTar = (args) => {
-      const { in: _in, ...rest } = args;
-      return copy({
-        in: _in,
-        out: `$builddir/${packageName}/${relative(cwd, getInput(_in))}`,
-        ...rest,
+        return test({
+          in: js,
+          out: join("$builddir", cwd, `${js}.result.txt`),
+          [orderOnlyDeps]: [...dependencies, ...dist],
+        });
       });
-    };
-    let toPack = [];
-    toPack.push(stageForTar({ in: join(cwd, "README.md") }));
-    toPack.push(stageForTar({ in: packageJSON }));
-    toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
-    toPack = toPack.concat(lib.map((file) => stageForTar({ in: file })));
+    } else {
+      return [];
+    }
+  })();
 
-    const createTar = tar({
-      out: `$builddir/ninjutsu-build-${packageName}.tgz`,
-      in: toPack,
-      dir: "$builddir",
+  // Prepare our files to create a tgz of our package, include
+  //   - README.md
+  //   - package.json
+  //   - contents of `lib`
+  //   - contents of `dist`
+  const stageForTar = (args) => {
+    const { in: _in, ...rest } = args;
+    return copy({
+      in: _in,
+      out: `$builddir/${cwd}/${relative(cwd, getInput(_in))}`,
+      ...rest,
     });
-    phony({ out: packageName, in: [createTar, ...testTargets] });
-    return Object.assign({}, packages, {
-      [packageName]: createTar,
-    });
-  }, {});
+  };
+  let toPack = [];
+  toPack.push(stageForTar({ in: join(cwd, "README.md") }));
+  toPack.push(stageForTar({ in: packageJSON }));
+  toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
+  toPack = toPack.concat(lib.map((file) => stageForTar({ in: file })));
+
+  const createTar = tar({
+    out: `$builddir/${localPKGJSON.name}.tgz`,
+    in: toPack,
+    dir: "$builddir",
+  });
+
+  // Create a alias for building and testing the whole package
+  phony({
+    out: localPKGJSON.name,
+    in: [buildPackage, ...testTargets, createTar],
+  });
+}
 
 {
   const cwd = "integration";
@@ -386,12 +374,21 @@ const tars = toposort(
   // If `packageJSON` is changed (and only after we have run `npm ci`)
   // install our packages locally
   const packageJSON = join(cwd, "package.json");
-  const dependenciesInstalled = ci({ in: packageJSON });
-  const linked = link({
-    in: packageJSON,
-    pkgs: Object.values(tars),
-    [orderOnlyDeps]: [dependenciesInstalled],
-  });
+
+  const localPKGJSON = JSON.parse(readFileSync(packageJSON).toString());
+
+  // Build up our dependencies that come from npm or locally linking (we
+  // assume there will be a "@ninjutsu-build/foo/build" target for when a
+  // dependency is built and usable)
+  const dependencies = [packagesLinked].concat(
+    Object.keys({
+      ...localPKGJSON.dependencies,
+      ...localPKGJSON.devDependencies,
+      ...localPKGJSON.peerDependencies,
+    })
+      .filter((d) => d.startsWith(scope))
+      .map((d) => `${d}/build`),
+  );
 
   // Grab all TypeScript tests files and format them
   const tests = globSync(join(cwd, "src", "*.mts"), {
@@ -413,7 +410,7 @@ const tars = toposort(
     in: tests,
     out: join(cwd, "dist", "typechecked.stamp"),
     compilerOptions,
-    [implicitDeps]: [linked],
+    [orderOnlyDeps]: dependencies,
   });
 
   // Transpile all files into JavaScript
@@ -424,19 +421,16 @@ const tars = toposort(
       in: t,
       out: join(cwd, "dist", basename(file, ext) + extLookup[ext]),
       args: transpileArgs,
-      [orderOnlyDeps]: [utilDecl],
     });
   });
 
   // Run all tests and make sure they have an order-only dependency
-  // on our non-test files. We have to continue using `implicitDeps` for
-  // our plugins as the `npmci` rule doesn't generate a `dyndep` yet
+  // on our non-test files.
   const integrationTests = jsTests.map((t) =>
     test({
       in: t,
       out: getInput(t) + ".result.txt",
-      [implicitDeps]: [linked],
-      [orderOnlyDeps]: [utilJS],
+      [orderOnlyDeps]: dependencies.concat(utilJS),
     }),
   );
 
