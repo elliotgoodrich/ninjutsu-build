@@ -1,7 +1,15 @@
 {
+  "workspaces": [
+    "packages/biome",
+    "packages/bun",
+    "packages/core",
+    "packages/esbuild",
+    "packages/node",
+    "packages/tsc",
+    "integration"
+  ],
   "scripts": {
     "build": "ninja",
-    "configure": "node configure/configure.mjs",
-    "bootstrap": "npm install --no-save .builddir/ninjutsu-build-bun.tgz .builddir/ninjutsu-build-biome.tgz .builddir/ninjutsu-build-core.tgz .builddir/ninjutsu-build-node.tgz .builddir/ninjutsu-build-tsc.tgz"
+    "configure": "node configure/configure.mjs"
   }
 }

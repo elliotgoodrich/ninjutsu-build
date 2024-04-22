@@ -1,14 +1,33 @@
 import { beforeEach, test, describe } from "node:test";
 import { strict as assert } from "node:assert";
-import { writeFileSync } from "node:fs";
 import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeTSCRule } from "@ninjutsu-build/tsc";
-import { mkdirSync, rmSync, symlinkSync, existsSync } from "node:fs";
+import {
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  existsSync,
+} from "node:fs";
 import { execSync, spawnSync } from "node:child_process";
 import { join } from "node:path/posix";
 import { getDeps } from "./util.mjs";
+import { relative as relativeNative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const dir = join("integration", "staging", "tsc");
+
+// Tell TypeScript to look for `@types/node` package installed in the
+// workspace `node_modules` directory, otherwise it'll fail to find it
+const typeRoots = [
+  relativeNative(
+    dir,
+    fileURLToPath(import.meta.resolve("@types/node/package.json")),
+  )
+    .split(sep)
+    .slice(0, -2)
+    .join("/"),
+];
 
 const compilerOptions = {
   outDir: "dist",
@@ -16,6 +35,7 @@ const compilerOptions = {
   strict: true,
   alwaysStrict: true,
   skipLibCheck: true,
+  typeRoots,
 };
 
 describe("tsc tests", () => {
