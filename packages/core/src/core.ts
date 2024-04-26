@@ -157,7 +157,7 @@ export type RuleArgs = {
   rspfile_content?: string;
   [implicitDeps]?: string | readonly string[];
   [implicitOut]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
 };
 
 /**
@@ -211,7 +211,7 @@ type BuildArgs<
 } & RequiredArgs<Omit<A, "out" | symbol>> & {
     [implicitDeps]?: string | readonly string[];
     [implicitOut]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [validations]?: (out: O) => string | readonly string[];
     dyndep?: string;
     pool?: string;
@@ -301,6 +301,34 @@ function homogenize(
     }
   }
   return out;
+}
+
+/**
+ * We want pass `{ file: string, [orderOnlyDeps]: string | readonly string[] }` as
+ * the value to other `[orderOnlyDeps]` properties.  This is needed when we have a
+ * build-order dependency on a formatted file.  In this case we don't want to have
+ * a build-order dependency on the `file` property, but the `[orderOnlyDeps]`
+ * property within.
+ *
+ * @private
+ */
+function getOrderOnlyDeps(
+  input: undefined | Input<string> | readonly Input<string>[],
+): undefined | string | readonly string[] {
+  if (typeof input !== "object") {
+    return input;
+  }
+
+  if (Array.isArray(input)) {
+    return input.map((x) =>
+      typeof x === "string" ? x : x[orderOnlyDeps] ?? x.file,
+    );
+  }
+  return (
+    input as {
+      [orderOnlyDeps]: undefined | string | readonly string[];
+    }
+  )[orderOnlyDeps];
 }
 
 /**
@@ -666,9 +694,9 @@ export class NinjaBuilder {
         ) +
         concatPaths(
           " || ",
-          ruleDeps[orderOnlyDeps],
+          getOrderOnlyDeps(ruleDeps[orderOnlyDeps]),
           extraOrderDeps,
-          buildVariables[orderOnlyDeps],
+          getOrderOnlyDeps(buildVariables[orderOnlyDeps]),
         ) +
         concatPaths(
           " |@ ",

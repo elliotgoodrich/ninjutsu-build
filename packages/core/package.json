@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/core",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "description": "Easily create ninja build files with this TypeScript library (https://ninja-build.org/)",
   "author": "Elliot Goodrich",
   "scripts": {

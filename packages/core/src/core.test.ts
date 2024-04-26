@@ -290,6 +290,7 @@ test("Passing all arguments to a `NinjaRule`", () => {
     in: needs<Input<string>>(),
     command: "[command]",
     description: "[desc]",
+    [orderOnlyDeps]: ["oA", { file: "unused", [orderOnlyDeps]: "oB" }],
   });
   const out: "out.txt" = all({
     out: "out.txt",
@@ -299,7 +300,10 @@ test("Passing all arguments to a `NinjaRule`", () => {
     description: "description_",
     [implicitDeps]: "implicitDeps_",
     [implicitOut]: ["implicitOut_"],
-    [orderOnlyDeps]: ["orderOnlyDeps_"],
+    [orderOnlyDeps]: [
+      "orderOnlyDeps_A",
+      { file: "unused", [orderOnlyDeps]: "orderOnlyDeps_B" },
+    ],
     [validations]: (out) => ["validations_" + out],
     pool: "pool",
     extra: 123,
@@ -313,7 +317,7 @@ test("Passing all arguments to a `NinjaRule`", () => {
       [validations]: ["valid1"],
     },
     [implicitDeps]: "implicit2",
-    [orderOnlyDeps]: ["ordered2", "ordered3"],
+    [orderOnlyDeps]: ["ordered2", { file: "ordered3" }],
     [validations]: (out: string) => "valid2_" + out,
   });
   assert.equal(out, "out.txt");
@@ -322,13 +326,13 @@ test("Passing all arguments to a `NinjaRule`", () => {
     `rule all
   command = [command]
   description = [desc]
-build out.txt | implicitOut_: all in.txt | implicitDeps_ || orderOnlyDeps_ |@ validations_out.txt
+build out.txt | implicitOut_: all in.txt | implicitDeps_ || oA oB orderOnlyDeps_A orderOnlyDeps_B |@ validations_out.txt
   dyndep = dyndep_
   command = command_
   description = description_
   pool = pool
   extra = 123
-build foo: all hi | implicit1 implicit2 || ordered1 ordered2 ordered3 |@ valid1 valid2_foo
+build foo: all hi | implicit1 implicit2 || oA oB ordered1 ordered2 ordered3 |@ valid1 valid2_foo
 `,
   );
 });
