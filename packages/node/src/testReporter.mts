@@ -1,9 +1,11 @@
-import { tap } from "node:test/reporters";
+import { tap, type TestEvent } from "node:test/reporters";
 
 // This is a node test reporter that uses `tap`, but is completely silent if there are no
 // failures.  Otherwise it prints out everything that has happened so far.
-export default async function* testReporter(source) {
-  let buffer = [];
+export default async function* testReporter(
+  source: AsyncGenerator<TestEvent>,
+): AsyncGenerator<string, void> {
+  let buffer: string[] = [];
   let hasFailure = false;
   for await (const event of source) {
     if (event.type === "test:pass") {
