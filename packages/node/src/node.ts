@@ -146,7 +146,7 @@ export function makeNodeTestRule(
       getNodeCommand(ninja) +
       ` --test --test-reporter=${resolvePath(
         ninja,
-        "../lib/testReporter.mjs",
+        "./testReporter.mjs",
       )} --test-reporter=tap --test-reporter-destination=stderr --test-reporter-destination=$out $nodeArgs $in $args`,
     description: "Running test $in",
     out: needs<string>(),
