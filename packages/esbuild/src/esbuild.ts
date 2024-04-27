@@ -93,7 +93,7 @@ export function makeESBuildRule(
   out: O;
   buildOptions?: Omit<BuildOptions, "outfile">;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
@@ -134,7 +134,7 @@ export function makeESBuildRule(
     out: O;
     buildOptions?: Omit<BuildOptions, "outfile">;
     [implicitDeps]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): O => {
