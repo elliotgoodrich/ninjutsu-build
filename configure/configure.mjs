@@ -46,6 +46,13 @@ const extLookup = {
   ".cts": ".cjs",
 };
 
+// Given a path to a JS file, return the filename of the
+// resulting TS file
+function getTSFileName(jspath) {
+  const ext = extname(jspath);
+  return basename(jspath, ext) + extLookup[ext];
+}
+
 const prefix = platform() === "win32" ? "cmd /c " : "";
 
 function makeNpmCiRule(ninja) {
@@ -104,14 +111,22 @@ function makeCopyRule(ninja) {
 }
 
 function makeSWCRule(ninja) {
-  const swc = relativeNative(
+  const swcPath = relativeNative(
     resolveNative(process.cwd(), ninja.outputDir),
     fileURLToPath(import.meta.resolve("@swc/cli")),
   );
-  return ninja.rule("swc", {
-    command: `${prefix}node ${swc} $in -o $out -q $args`,
+  const swc = ninja.rule("swc", {
+    command: `${prefix}node ${swcPath} $in -o $out -q $args`,
     description: "Transpiling $in",
   });
+  return (a) => {
+    const { outDir, ...rest } = a;
+    return swc({
+      out: join(outDir, getTSFileName(getInput(a.in))),
+      ...rest,
+      args: "-C jsc.target=es2018 -C module.type=es6",
+    });
+  };
 }
 
 function formatAndLint(file) {
@@ -239,7 +254,6 @@ const lint = addBiomeConfig(
 const transpile = inject(makeSWCRule(ninja), {
   [orderOnlyDeps]: toolsInstalled,
 });
-const transpileArgs = "-C jsc.target=es2018";
 
 format({ in: "configure/configure.mjs" });
 
@@ -314,11 +328,9 @@ for (const cwd of workspaceJSON.workspaces) {
         compilerOptions,
         [orderOnlyDeps]: [...dependencies, ...dist],
       }).map((t) => {
-        const file = getInput(t);
         const js = transpile({
           in: t,
-          out: join(cwd, "dist", basename(file, extname(file)) + ".mjs"),
-          args: transpileArgs,
+          outDir: join(cwd, "dist"),
         });
         return test({
           in: js,
@@ -409,15 +421,12 @@ for (const cwd of workspaceJSON.workspaces) {
   });
 
   // Transpile all files into JavaScript
-  const jsTests = typechecked.map((t) => {
-    const file = getInput(t);
-    const ext = extname(file);
-    return transpile({
+  const jsTests = typechecked.map((t) =>
+    transpile({
       in: t,
-      out: join(cwd, "dist", basename(file, ext) + extLookup[ext]),
-      args: transpileArgs,
-    });
-  });
+      outDir: join(cwd, "dist"),
+    }),
+  );
 
   // Run all tests and make sure they have an order-only dependency
   // on our non-test files.
