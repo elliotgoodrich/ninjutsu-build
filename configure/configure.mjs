@@ -11,7 +11,6 @@ import {
   makeFormatRule,
   makeLintRule,
 } from "@ninjutsu-build/biome";
-import { makeTranspileRule } from "@ninjutsu-build/bun";
 import { basename, dirname, extname, join, relative } from "node:path/posix";
 import {
   resolve as resolveNative,
@@ -48,8 +47,6 @@ const extLookup = {
 };
 
 const prefix = platform() === "win32" ? "cmd /c " : "";
-
-const useBun = process.argv.includes("--bun");
 
 function makeNpmCiRule(ninja) {
   const ci = ninja.rule("npmci", {
@@ -239,12 +236,10 @@ const lint = addBiomeConfig(
     [orderOnlyDeps]: toolsInstalled,
   }),
 );
-const transpile = useBun
-  ? makeTranspileRule(ninja)
-  : inject(makeSWCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
-const transpileArgs = useBun
-  ? "--target=node --no-bundle"
-  : "-C jsc.target=es2018";
+const transpile = inject(makeSWCRule(ninja), {
+  [orderOnlyDeps]: toolsInstalled,
+});
+const transpileArgs = "-C jsc.target=es2018";
 
 format({ in: "configure/configure.mjs" });
 
