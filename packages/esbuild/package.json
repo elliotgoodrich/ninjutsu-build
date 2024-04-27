@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/esbuild",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An esbuild plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
   "scripts": {
@@ -22,7 +22,7 @@
     "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
   },
   "peerDependencies": {
-    "@ninjutsu-build/core": "^0.8.8",
+    "@ninjutsu-build/core": "^0.8.9",
     "esbuild": "^0.20.2",
     "node-jq": "^4.3.1"
   }

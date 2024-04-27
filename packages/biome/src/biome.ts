@@ -81,7 +81,7 @@ export function makeFormatRule(
   configPath: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: {
     file: string;
@@ -107,7 +107,7 @@ export function makeFormatRule(
     configPath: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: {
       file: string;
@@ -189,7 +189,7 @@ export function makeFormatToRule(
   configPath: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
@@ -213,7 +213,7 @@ export function makeFormatToRule(
     configPath: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): O => {
@@ -290,7 +290,7 @@ export function makeCheckFormattedRule(
   configPath: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => {
@@ -314,7 +314,7 @@ export function makeCheckFormattedRule(
     configPath: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): {
@@ -422,7 +422,7 @@ export function makeLintRule(
   configPath: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => {
@@ -446,7 +446,7 @@ export function makeLintRule(
     configPath: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): {

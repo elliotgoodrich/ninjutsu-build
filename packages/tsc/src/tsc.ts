@@ -128,7 +128,7 @@ export function makeTypeCheckRule(
   out: O;
   compilerOptions?: CompilerOptions;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => { file: string; [validations]: O }[] {
@@ -150,7 +150,7 @@ export function makeTypeCheckRule(
     out: O;
     compilerOptions?: CompilerOptions;
     [implicitDeps]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): { file: string; [validations]: O }[] => {
@@ -236,7 +236,7 @@ export function makeTSCRule(
   in: readonly Input<string>[];
   compilerOptions?: CompilerOptions;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: readonly string[]) => string | readonly string[];
 }) => readonly string[] {
@@ -257,7 +257,7 @@ export function makeTSCRule(
     in: readonly Input<string>[];
     compilerOptions?: CompilerOptions;
     [implicitDeps]?: string | readonly string[];
-    [orderOnlyDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: readonly string[]) => string | readonly string[];
   }): readonly string[] => {

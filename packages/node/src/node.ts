@@ -82,7 +82,7 @@ export function makeNodeRule(
   args?: string;
   nodeArgs?: string;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
@@ -137,7 +137,7 @@ export function makeNodeTestRule(
   args?: string;
   nodeArgs?: string;
   [implicitDeps]?: string | readonly string[];
-  [orderOnlyDeps]?: string | readonly string[];
+  [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
