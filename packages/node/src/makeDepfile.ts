@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { isBuiltin } from "node:module";
-import { open, logDependency } from "../lib/file.cjs";
+import { open, logDependency } from "./file.cjs";
 
 export async function initialize(out: string): Promise<void> {
   open(out);
