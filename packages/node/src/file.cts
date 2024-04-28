@@ -1,15 +1,15 @@
-const { openSync, writeFileSync } = require("node:fs");
-const { resolve, relative, isAbsolute } = require("node:path");
+import { openSync, writeFileSync } from "node:fs";
+import { resolve, relative, isAbsolute } from "node:path";
 
-let handle;
+let handle: number | undefined;
 const dir = resolve();
 
-function open(outFile) {
+export function open(outFile: string): void {
   handle = openSync(outFile + ".depfile", "w");
   writeFileSync(handle, outFile + ":");
 }
 
-function logDependency(dependency) {
+export function logDependency(dependency: string): void {
   if (handle === undefined) {
     // In this case we are most likely `require`ing ourselves before we've called
     // `open`. TODO: Fix the ordering in the future.
@@ -21,8 +21,3 @@ function logDependency(dependency) {
   ).replaceAll("\\", "/");
   writeFileSync(handle, " " + dep);
 }
-
-module.exports = {
-  open,
-  logDependency,
-};

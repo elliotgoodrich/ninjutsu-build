@@ -287,14 +287,9 @@ for (const cwd of workspaceJSON.workspaces) {
   const packageJSON = format({ in: join(cwd, "package.json") });
 
   // Grab all TypeScript source files and format them
-  const ts = globSync(join(cwd, "src", "*.{mts,ts}"), {
+  const ts = globSync(join(cwd, "src", "*.{cts,mts,ts}"), {
     posix: true,
     ignore: { ignored: (f) => f.name.endsWith(".test.ts") },
-  }).map(formatAndLint);
-
-  // In the `lib` directory we have JavaScript files and TS declaration files
-  const lib = globSync(join(cwd, "lib", "*.*"), {
-    posix: true,
   }).map(formatAndLint);
 
   // Transpile the TypeScript into JavaScript once formatting has finished
@@ -304,14 +299,14 @@ for (const cwd of workspaceJSON.workspaces) {
       ...compilerOptions,
       outDir: join(cwd, "dist"),
     },
-    [orderOnlyDeps]: [...dependencies, ...lib],
+    [orderOnlyDeps]: dependencies,
   });
 
   // Create a phony target for when the package has been built and is consumable
   // from other packages
   const buildPackage = phony({
     out: `${localPKGJSON.name}/build`,
-    in: [packageJSON, ...dist, ...lib].map(getOrderOnlyDeps),
+    in: [packageJSON, ...dist].map(getOrderOnlyDeps),
   });
 
   // Grab all TypeScript tests files and format them
@@ -360,7 +355,6 @@ for (const cwd of workspaceJSON.workspaces) {
   toPack.push(stageForTar({ in: join(cwd, "README.md") }));
   toPack.push(stageForTar({ in: packageJSON }));
   toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
-  toPack = toPack.concat(lib.map((file) => stageForTar({ in: file })));
 
   const createTar = tar({
     out: `$builddir/${localPKGJSON.name}.tgz`,
