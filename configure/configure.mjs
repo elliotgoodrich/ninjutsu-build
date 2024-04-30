@@ -54,6 +54,7 @@ function getTSFileName(jspath) {
 }
 
 const prefix = platform() === "win32" ? "cmd /c " : "";
+const exe = platform() === "win32" ? ".exe" : "";
 
 function makeNpmCiRule(ninja) {
   const ci = ninja.rule("npmci", {
@@ -116,15 +117,17 @@ function makeSWCRule(ninja) {
     fileURLToPath(import.meta.resolve("@swc/cli")),
   );
   const swc = ninja.rule("swc", {
-    command: `${prefix}node ${swcPath} $in -o $out -q $args`,
+    command: `node${exe} ${swcPath} $in -o $out -q $args`,
     description: "Transpiling $in",
   });
   return (a) => {
     const { outDir, ...rest } = a;
+    const input = getInput(a.in);
+    const type = extname(input) === ".mts" ? "es6" : "commonjs";
     return swc({
       out: join(outDir, getTSFileName(getInput(a.in))),
       ...rest,
-      args: "-C jsc.target=es2018 -C module.type=es6",
+      args: `-C jsc.target=es2018 -C module.type=${type} -C jsc.parser.syntax=typescript -C module.importInterop=node`,
     });
   };
 }
@@ -139,9 +142,11 @@ function formatAndLint(file) {
 function inject(rule, args) {
   return (a) => {
     const { [orderOnlyDeps]: _orderOnlyDeps = [], ...rest } = a;
+    const deps =
+      typeof _orderOnlyDeps === "string" ? [_orderOnlyDeps] : _orderOnlyDeps;
     return rule({
       ...rest,
-      [orderOnlyDeps]: _orderOnlyDeps.concat(args[orderOnlyDeps]),
+      [orderOnlyDeps]: deps.concat(args[orderOnlyDeps]),
     });
   };
 }
@@ -267,17 +272,23 @@ for (const cwd of workspaceJSON.workspaces) {
     readFileSync(join(cwd, "package.json")).toString(),
   );
 
-  // Build up our dependencies that come from npm or locally linking (we
-  // assume there will be a "@ninjutsu-build/foo/build" target for when a
-  // dependency is built and usable)
-  const dependencies = [packagesLinked].concat(
-    Object.keys({
-      ...localPKGJSON.dependencies,
-      ...localPKGJSON.devDependencies,
-      ...localPKGJSON.peerDependencies,
-    })
-      .filter((d) => d.startsWith(scope))
-      .map((d) => `${d}/build`),
+  // Build up our dependencies that come from npm or locally linking
+  const localDependecies = Object.keys({
+    ...localPKGJSON.dependencies,
+    ...localPKGJSON.devDependencies,
+    ...localPKGJSON.peerDependencies,
+  }).filter((d) => d.startsWith(scope));
+
+  // Assume there is a target "@ninjutsu-build/foo/runnable" when the
+  // `foo` package can be executed.
+  const dependenciesRunnable = [packagesLinked].concat(
+    localDependecies.map((d) => `${d}/runnable`),
+  );
+
+  // Assume there is a target "@ninjutsu-build/foo/typed" when the `foo`
+  // package has all type declarations
+  const dependenciesTyped = [packagesLinked].concat(
+    localDependecies.map((d) => `${d}/typed`),
   );
 
   ninja.output += "\n";
@@ -287,30 +298,53 @@ for (const cwd of workspaceJSON.workspaces) {
   const packageJSON = format({ in: join(cwd, "package.json") });
 
   // Grab all TypeScript source files and format them
-  const ts = globSync(join(cwd, "src", "*.{cts,mts,ts}"), {
+  const sources = globSync(join(cwd, "src", "*.{cts,mts,ts}"), {
     posix: true,
-    ignore: { ignored: (f) => f.name.endsWith(".test.ts") },
+    ignore: {
+      ignored: (f) => basename(f.name, extname(f.name)).endsWith(".test"),
+    },
   }).map(formatAndLint);
 
-  // Transpile the TypeScript into JavaScript once formatting has finished
-  const dist = tsc({
-    in: ts,
-    compilerOptions: {
-      ...compilerOptions,
-      outDir: join(cwd, "dist"),
-    },
-    [orderOnlyDeps]: dependencies,
+  const outDir = join(cwd, "dist");
+
+  // Transpile the TypeScript into JavaScript
+  const javascript = sources.map((s) =>
+    transpile({
+      in: s,
+      outDir,
+    }),
+  );
+
+  // Create a phony target for when the package has all its JavaScript built
+  // and it is ready to be executed.
+  const packageRunnable = phony({
+    out: `${localPKGJSON.name}/runnable`,
+    in: [packageJSON, ...javascript, ...dependenciesRunnable].map(
+      getOrderOnlyDeps,
+    ),
   });
 
-  // Create a phony target for when the package has been built and is consumable
-  // from other packages
-  const buildPackage = phony({
-    out: `${localPKGJSON.name}/build`,
-    in: [packageJSON, ...dist].map(getOrderOnlyDeps),
+  // Create the TypeScript type declaration files and do typechecking
+  const typeDeclarations = tsc({
+    in: sources,
+    compilerOptions: {
+      ...compilerOptions,
+      emitDeclarationOnly: true,
+      outDir,
+    },
+    [orderOnlyDeps]: dependenciesTyped,
+  });
+
+  // Create a phony target for when the package has its types generated and
+  // it can be used from other packages wanting to generate types or type
+  // check their own code.
+  const packageHasTypes = phony({
+    out: `${localPKGJSON.name}/typed`,
+    in: [packageJSON, ...typeDeclarations].map(getOrderOnlyDeps),
   });
 
   // Grab all TypeScript tests files and format them
-  const tests = globSync(join(cwd, "src", "*.test.ts"), {
+  const tests = globSync(join(cwd, "src", "*.test.mts"), {
     posix: true,
   }).map(formatAndLint);
 
@@ -321,16 +355,16 @@ for (const cwd of workspaceJSON.workspaces) {
         in: tests,
         out: join(cwd, "dist", "typechecked.stamp"),
         compilerOptions,
-        [orderOnlyDeps]: [...dependencies, ...dist],
+        [orderOnlyDeps]: packageHasTypes,
       }).map((t) => {
         const js = transpile({
           in: t,
-          outDir: join(cwd, "dist"),
+          outDir,
         });
         return test({
           in: js,
           out: join("$builddir", cwd, `${js}.result.txt`),
-          [orderOnlyDeps]: [...dependencies, ...dist],
+          [orderOnlyDeps]: packageRunnable,
         });
       });
     } else {
@@ -354,7 +388,7 @@ for (const cwd of workspaceJSON.workspaces) {
   let toPack = [];
   toPack.push(stageForTar({ in: join(cwd, "README.md") }));
   toPack.push(stageForTar({ in: packageJSON }));
-  toPack = toPack.concat(dist.map((file) => stageForTar({ in: file })));
+  toPack = toPack.concat(javascript.map((file) => stageForTar({ in: file })));
 
   const createTar = tar({
     out: `$builddir/${localPKGJSON.name}.tgz`,
@@ -365,12 +399,13 @@ for (const cwd of workspaceJSON.workspaces) {
   // Create a alias for building and testing the whole package
   phony({
     out: localPKGJSON.name,
-    in: [buildPackage, ...testTargets, createTar],
+    in: [packageHasTypes, packageRunnable, createTar, ...testTargets],
   });
 }
 
 {
   const cwd = "integration";
+  const outDir = join(cwd, "dist");
 
   // If `packageJSON` is changed (and only after we have run `npm ci`)
   // install our packages locally
@@ -378,17 +413,23 @@ for (const cwd of workspaceJSON.workspaces) {
 
   const localPKGJSON = JSON.parse(readFileSync(packageJSON).toString());
 
-  // Build up our dependencies that come from npm or locally linking (we
-  // assume there will be a "@ninjutsu-build/foo/build" target for when a
-  // dependency is built and usable)
-  const dependencies = [packagesLinked].concat(
-    Object.keys({
-      ...localPKGJSON.dependencies,
-      ...localPKGJSON.devDependencies,
-      ...localPKGJSON.peerDependencies,
-    })
-      .filter((d) => d.startsWith(scope))
-      .map((d) => `${d}/build`),
+  // Build up our dependencies that come from npm or locally linking
+  const localDependecies = Object.keys({
+    ...localPKGJSON.dependencies,
+    ...localPKGJSON.devDependencies,
+    ...localPKGJSON.peerDependencies,
+  }).filter((d) => d.startsWith(scope));
+
+  // Assume there is a target "@ninjutsu-build/foo/runnable" when the
+  // `foo` package can be executed.
+  const dependenciesRunnable = [packagesLinked].concat(
+    localDependecies.map((d) => `${d}/runnable`),
+  );
+
+  // Assume there is a target "@ninjutsu-build/foo/typed" when the `foo`
+  // package has all type declarations
+  const dependenciesTyped = [packagesLinked].concat(
+    localDependecies.map((d) => `${d}/typed`),
   );
 
   // Grab all TypeScript tests files and format them
@@ -399,26 +440,26 @@ for (const cwd of workspaceJSON.workspaces) {
 
   const utilJS = copy({
     in: join(cwd, "src", "util.mjs"),
-    out: join(cwd, "dist", "util.mjs"),
+    out: join(outDir, "util.mjs"),
   });
   const utilDecl = copy({
     in: join(cwd, "src", "util.d.mts"),
-    out: join(cwd, "dist", "util.d.mts"),
+    out: join(outDir, "util.d.mts"),
   });
 
   // Typecheck everything in one go
   const typechecked = typecheck({
     in: tests,
-    out: join(cwd, "dist", "typechecked.stamp"),
+    out: join(outDir, "typechecked.stamp"),
     compilerOptions,
-    [orderOnlyDeps]: dependencies,
+    [orderOnlyDeps]: dependenciesTyped,
   });
 
   // Transpile all files into JavaScript
   const jsTests = typechecked.map((t) =>
     transpile({
       in: t,
-      outDir: join(cwd, "dist"),
+      outDir,
     }),
   );
 
@@ -428,7 +469,7 @@ for (const cwd of workspaceJSON.workspaces) {
     test({
       in: t,
       out: getInput(t) + ".result.txt",
-      [orderOnlyDeps]: dependencies.concat(utilJS),
+      [orderOnlyDeps]: dependenciesRunnable.concat(utilJS),
     }),
   );
 
