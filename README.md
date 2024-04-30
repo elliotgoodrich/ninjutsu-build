@@ -2,8 +2,9 @@
 
 A set of TypeScript libraries for creating ninja files (https://ninja-build.org/).
 
-Ninjutsu Build is built using itself. You can see the [configure.mjs](configure.mjs)
-script used to generate the `build.ninja` file.
+Ninjutsu Build is built using itself. You can see the
+[configure.mjs](configure/configure.mjs) script used to generate the
+`build.ninja` file.
 
 ## Why Ninjutsu Build?
 
@@ -23,14 +24,16 @@ Though core library `@ninjutsu-build/core` ([npm](https://www.npmjs.com/package/
 has everything you need to create ninja files, there are a set of plugins that have already solved
 some of the more common requirements:
 
-  - [`node`](packages/node/README.md) ([npm `@ninjutsu-build/node`](https://www.npmjs.com/package/@ninjutsu-build/node))
-    for running `node` (and node's test runner) while tracking all JavaScript dependencies
-  - [`tsc`](packages/tsc/README.md) ([npm `@ninjutsu-build/tsc`](https://www.npmjs.com/package/@ninjutsu-build/tsc))
-    for compiling TypeScript to JavaScript using `tsc` while tracking all TypeScript dependencies
   - [`biome`](packages/biome/README.md) ([npm `@ninjutsu-build/biome`](https://www.npmjs.com/package/@ninjutsu-build/biome))
     for linting and formatting using `biomejs
   - [`bun`](packages/bun/README.md) ([npm `@ninjutsu-build/bun`](https://www.npmjs.com/package/@ninjutsu-build/bun))
     for transpiling TypeScript to JavaScript using `bun`
+  - [`esbuild`](packages/esbuild/README.md) ([npm `@ninjutsu-build/esbuild`](https://www.npmjs.com/package/@ninjutsu-build/esbuild))
+    for transpiling and bundling TypeScript/JavaScript using `esbuild`
+  - [`node`](packages/node/README.md) ([npm `@ninjutsu-build/node`](https://www.npmjs.com/package/@ninjutsu-build/node))
+    for running `node` (and node's test runner) while tracking all JavaScript dependencies
+  - [`tsc`](packages/tsc/README.md) ([npm `@ninjutsu-build/tsc`](https://www.npmjs.com/package/@ninjutsu-build/tsc))
+    for compiling TypeScript to JavaScript using `tsc` while tracking all TypeScript dependencies
 
 ## Prerequisites
 
