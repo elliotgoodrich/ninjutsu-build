@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 
-export function getDeps(cwd) {
-  const deps = {};
+export function getDeps(cwd: string): Record<string, string[]> {
+  const deps: Record<string, string[]> = {};
   let name = "";
   for (const line of execSync("ninja -t deps", { cwd })
     .toString()

@@ -264,10 +264,6 @@ format({ in: "configure/configure.mjs" });
 
 const scope = "@ninjutsu-build/";
 for (const cwd of workspaceJSON.workspaces) {
-  if (cwd === "integration") {
-    // Handle the integration package separately for the moment
-    continue;
-  }
   const localPKGJSON = JSON.parse(
     readFileSync(join(cwd, "package.json")).toString(),
   );
@@ -401,79 +397,6 @@ for (const cwd of workspaceJSON.workspaces) {
     out: localPKGJSON.name,
     in: [packageHasTypes, packageRunnable, createTar, ...testTargets],
   });
-}
-
-{
-  const cwd = "integration";
-  const outDir = join(cwd, "dist");
-
-  // If `packageJSON` is changed (and only after we have run `npm ci`)
-  // install our packages locally
-  const packageJSON = join(cwd, "package.json");
-
-  const localPKGJSON = JSON.parse(readFileSync(packageJSON).toString());
-
-  // Build up our dependencies that come from npm or locally linking
-  const localDependecies = Object.keys({
-    ...localPKGJSON.dependencies,
-    ...localPKGJSON.devDependencies,
-    ...localPKGJSON.peerDependencies,
-  }).filter((d) => d.startsWith(scope));
-
-  // Assume there is a target "@ninjutsu-build/foo/runnable" when the
-  // `foo` package can be executed.
-  const dependenciesRunnable = [packagesLinked].concat(
-    localDependecies.map((d) => `${d}/runnable`),
-  );
-
-  // Assume there is a target "@ninjutsu-build/foo/typed" when the `foo`
-  // package has all type declarations
-  const dependenciesTyped = [packagesLinked].concat(
-    localDependecies.map((d) => `${d}/typed`),
-  );
-
-  // Grab all TypeScript tests files and format them
-  const tests = globSync(join(cwd, "src", "*.mts"), {
-    posix: true,
-    ignore: { ignored: (f) => f.name.endsWith(".d.mts") },
-  }).map(formatAndLint);
-
-  const utilJS = copy({
-    in: join(cwd, "src", "util.mjs"),
-    out: join(outDir, "util.mjs"),
-  });
-  const utilDecl = copy({
-    in: join(cwd, "src", "util.d.mts"),
-    out: join(outDir, "util.d.mts"),
-  });
-
-  // Typecheck everything in one go
-  const typechecked = typecheck({
-    in: tests,
-    out: join(outDir, "typechecked.stamp"),
-    compilerOptions,
-    [orderOnlyDeps]: dependenciesTyped,
-  });
-
-  // Transpile all files into JavaScript
-  const jsTests = typechecked.map((t) =>
-    transpile({
-      in: t,
-      outDir,
-    }),
-  );
-
-  // Run all tests and make sure they have an order-only dependency
-  // on our non-test files.
-  const integrationTests = jsTests.map((t) =>
-    test({
-      in: t,
-      out: getInput(t) + ".result.txt",
-      [orderOnlyDeps]: dependenciesRunnable.concat(utilJS),
-    }),
-  );
-
-  phony({ out: "integration", in: integrationTests });
 }
 
 writeFileSync("build.ninja", ninja.output);
