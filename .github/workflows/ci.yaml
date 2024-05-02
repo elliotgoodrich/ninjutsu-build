@@ -28,4 +28,5 @@ jobs:
     - uses: seanmiddleditch/gha-setup-ninja@master
     - run: cd configure && npm ci
     - run: npm run configure
+    - run: node --import ./hookImport.mjs ./index.mjs
     - run: ninja -k 0
