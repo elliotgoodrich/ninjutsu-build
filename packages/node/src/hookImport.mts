@@ -1,9 +1,11 @@
 import { fileURLToPath } from "node:url";
 import { isBuiltin } from "node:module";
-import { open, logDependency } from "./file.cjs";
+import { type MessagePort } from "node:worker_threads";
 
-export async function initialize(out: string): Promise<void> {
-  open(out);
+let port: MessagePort;
+
+export async function initialize(p: MessagePort): Promise<void> {
+  port = p;
 }
 
 export async function load(
@@ -12,7 +14,7 @@ export async function load(
   nextLoad: (url: string, context: unknown) => Promise<unknown>,
 ): Promise<unknown> {
   if (!isBuiltin(url)) {
-    logDependency(fileURLToPath(url));
+    port.postMessage(fileURLToPath(url));
   }
   return nextLoad(url, context);
 }

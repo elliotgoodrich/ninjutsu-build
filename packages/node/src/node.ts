@@ -22,14 +22,25 @@ function resolvePath(ninja: NinjaBuilder, file: string): string {
   return !isAbsolute(path) && !path.startsWith("../") ? "./" + path : path;
 }
 
+// Note that within a data URL we can only import builtin modules and
+// absolute paths (https://nodejs.org/api/esm.html#data-imports) which is
+// why we need to get the full path for `depfile.cjs`.
 function getImportCode(ninja: NinjaBuilder): string {
   return (
     "import { register } from 'node:module';" +
     "import { pathToFileURL } from 'node:url';" +
+    "import { MessageChannel } from 'node:worker_threads';" +
+    `import { open, addDependency } from 'file://${require
+      .resolve("./depfile.cjs")
+      .replaceAll("\\", "/")}';` +
+    "open('$out');" +
+    "const { port1, port2 } = new MessageChannel();" +
+    "port1.on('message', addDependency);" +
+    "port1.unref();" +
     `register('${resolvePath(
       ninja,
-      "./makeDepfile.js",
-    )}', pathToFileURL('./'), { data: '$out' });`
+      "./hookImport.mjs",
+    )}', { parentURL: pathToFileURL('./'), data: port2, transferList: [port2] });`
   );
 }
 
