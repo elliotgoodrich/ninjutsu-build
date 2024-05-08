@@ -17,11 +17,18 @@ describe("node tests", () => {
   });
 
   test("Basic example", () => {
+    const zero = "number/zero.cjs";
+    mkdirSync(join(dir, "number"));
+    writeFileSync(join(dir, zero), "exports.zero = 0;\n");
+
     const one = "one.mjs";
     writeFileSync(join(dir, one), "export const one = 1;\n");
 
-    const two = "two.cjs";
-    writeFileSync(join(dir, two), "exports.two = 2;\n");
+    const two = "number/two.cjs";
+    writeFileSync(
+      join(dir, two),
+      "const { zero } = require('./zero.cjs');\n" + "exports.two = 2 + zero;\n",
+    );
 
     // `three` will be the "real" path to `three.cjs` and we will reference it
     // through an symlinked directory and expect that that dynamic dependencies
@@ -43,19 +50,27 @@ describe("node tests", () => {
       return "imp/" + three;
     })();
 
+    const four = "four.cjs";
+    writeFileSync(join(dir, four), "exports.four = 4;\n");
+
     const script = "script.mjs";
     writeFileSync(
       join(dir, script),
-      "import { one } from './one.mjs';\n" +
-        "import { two } from './two.cjs';\n" +
+      "import * as fs from 'node:fs';\n" +
+        "import { one } from './one.mjs';\n" +
+        "import { two } from './number/two.cjs';\n" +
         "import { three } from './src/three.cjs';\n" +
-        "console.log(one + ' ' + two + ' ' + three);\n",
+        "import { createRequire } from 'node:module';\n" +
+        "const require = createRequire(import.meta.url);\n" +
+        "const { four } = require('./four.cjs');\n" +
+        "console.log(one + ' ' + two + ' ' + three + ' ' + four);\n",
     );
 
     const script2 = "script.cjs";
     writeFileSync(
       join(dir, script2),
-      "const { two } = require('./two.cjs');\n" +
+      "const fs = require('node:fs');\n" +
+        "const { two } = require('./number/two.cjs');\n" +
         "const { three } = require('./src/three.cjs');\n" +
         "console.log(two + ' + 1 = ' + three);\n",
     );
@@ -72,7 +87,7 @@ describe("node tests", () => {
       assert.match(stdout, /Creating output2.txt from 'node script.cjs'/);
     }
 
-    assert.strictEqual(readFileSync(join(dir, output)).toString(), "1 2 3\n");
+    assert.strictEqual(readFileSync(join(dir, output)).toString(), "1 2 3 4\n");
     assert.strictEqual(
       readFileSync(join(dir, output2)).toString(),
       "2 + 1 = 3\n",
@@ -88,9 +103,12 @@ describe("node tests", () => {
     deps[output].sort();
     deps[output2].sort();
 
+    // We have a dependency on the entry point, which is not necessary,
+    // but ninja allows it and our implementation is far neater to
+    // not special case it
     assert.deepEqual(deps, {
-      [output]: [three, one, script, two],
-      [output2]: [script2], // FIX: Should also depend on `two` and `three`
+      [output]: [four, three, two, zero, one, script],
+      [output2]: [three, two, zero, script2],
     });
   });
 });
