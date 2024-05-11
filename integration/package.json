@@ -20,11 +20,11 @@
     "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
   },
   "devDependencies": {
-    "@ninjutsu-build/core": "^0.8.5",
-    "@ninjutsu-build/biome": "^0.8.2",
-    "@ninjutsu-build/esbuild": "^0.1.0",
-    "@ninjutsu-build/node": "^0.9.1",
-    "@ninjutsu-build/tsc": "^0.12.1",
+    "@ninjutsu-build/core": "*",
+    "@ninjutsu-build/biome": "*",
+    "@ninjutsu-build/esbuild": "*",
+    "@ninjutsu-build/node": "*",
+    "@ninjutsu-build/tsc": "*",
     "@types/node": "^20.9.0",
     "typescript": "^5.2.2"
   }
