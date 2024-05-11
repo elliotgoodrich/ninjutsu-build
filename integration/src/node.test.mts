@@ -6,7 +6,7 @@ import { makeNodeRule } from "@ninjutsu-build/node";
 import { mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join } from "node:path";
-import { getDeps } from "./util.mjs";
+import { callNinja, depsMatch, getDeps } from "./util.mjs";
 
 const dir = join("integration", "staging", "node");
 
@@ -53,17 +53,22 @@ describe("node tests", () => {
     const four = "four.cjs";
     writeFileSync(join(dir, four), "exports.four = 4;\n");
 
+    const dummy = "dummy.json";
+    writeFileSync(join(dir, dummy), "{}");
+
     const script = "script.mjs";
     writeFileSync(
       join(dir, script),
-      "import * as fs from 'node:fs';\n" +
+      "import { addDependency } from '@ninjutsu-build/node/runtime';\n" +
+        "import * as fs from 'node:fs';\n" +
         "import { one } from './one.mjs';\n" +
         "import { two } from './number/two.cjs';\n" +
         "import { three } from './src/three.cjs';\n" +
         "import { createRequire } from 'node:module';\n" +
         "const require = createRequire(import.meta.url);\n" +
         "const { four } = require('./four.cjs');\n" +
-        "console.log(one + ' ' + two + ' ' + three + ' ' + four);\n",
+        "console.log(one + ' ' + two + ' ' + three + ' ' + four);\n" +
+        "addDependency('./dummy.json')",
     );
 
     const script2 = "script.cjs";
@@ -82,7 +87,7 @@ describe("node tests", () => {
     writeFileSync(join(dir, "build.ninja"), ninja.output);
 
     {
-      const stdout = execSync("ninja", { cwd: dir }).toString();
+      const stdout = callNinja(dir);
       assert.match(stdout, /Creating output.txt from 'node script.mjs'/);
       assert.match(stdout, /Creating output2.txt from 'node script.cjs'/);
     }
@@ -97,18 +102,22 @@ describe("node tests", () => {
       "ninja: no work to do.",
     );
 
-    // Sort the dependencies as files may be resolved asynchronously and
-    // therefore the dependencies arrive in a different order
-    const deps = getDeps(dir);
-    deps[output].sort();
-    deps[output2].sort();
-
     // We have a dependency on the entry point, which is not necessary,
     // but ninja allows it and our implementation is far neater to
     // not special case it
-    assert.deepEqual(deps, {
-      [output]: [four, three, two, zero, one, script],
-      [output2]: [three, two, zero, script2],
+    depsMatch(getDeps(dir), {
+      [output]: [
+        /depfile\.cjs$/,
+        /runtime\.cjs$/,
+        dummy,
+        zero,
+        one,
+        two,
+        three,
+        four,
+        script,
+      ],
+      [output2]: [zero, two, three, script2],
     });
   });
 });

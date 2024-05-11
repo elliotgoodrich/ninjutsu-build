@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/node",
-  "version": "0.9.5",
+  "version": "0.10.0",
   "description": "A ninjutsu-build plugin to generate ninja rules to execute JavaScript with node",
   "author": "Elliot Goodrich",
   "scripts": {
@@ -10,6 +10,10 @@
     "node": ">=18.18.0"
   },
   "main": "dist/node.js",
+  "exports": {
+    ".": "./dist/node.js",
+    "./runtime": "./dist/runtime.cjs"
+  },
   "keywords": [
     "ninjutsu",
     "ninjutsu-build",
