@@ -368,34 +368,43 @@ for (const cwd of workspaceJSON.workspaces) {
     }
   })();
 
-  // Prepare our files to create a tgz of our package, include
-  //   - README.md
-  //   - package.json
-  //   - contents of `lib`
-  //   - contents of `dist`
-  const stageForTar = (args) => {
-    const { in: _in, ...rest } = args;
-    return copy({
-      in: _in,
-      out: `$builddir/${cwd}/${relative(cwd, getInput(_in))}`,
-      ...rest,
-    });
-  };
-  let toPack = [];
-  toPack.push(stageForTar({ in: join(cwd, "README.md") }));
-  toPack.push(stageForTar({ in: packageJSON }));
-  toPack = toPack.concat(javascript.map((file) => stageForTar({ in: file })));
+  const createTar = (() => {
+    // We assume packages are published if and only if they have a version number.
+    // This allows us to avoid creating an archive for the `integration` package.
+    if (localPKGJSON.version === undefined) {
+      return [];
+    }
+    // Prepare our files to create a tgz of our package, include
+    //   - README.md
+    //   - package.json
+    //   - contents of `lib`
+    //   - contents of `dist`
+    const stageForTar = (args) => {
+      const { in: _in, ...rest } = args;
+      return copy({
+        in: _in,
+        out: `$builddir/${cwd}/${relative(cwd, getInput(_in))}`,
+        ...rest,
+      });
+    };
+    let toPack = [];
+    toPack.push(stageForTar({ in: join(cwd, "README.md") }));
+    toPack.push(stageForTar({ in: packageJSON }));
+    toPack = toPack.concat(javascript.map((file) => stageForTar({ in: file })));
 
-  const createTar = tar({
-    out: `$builddir/${localPKGJSON.name}.tgz`,
-    in: toPack,
-    dir: "$builddir",
-  });
+    return [
+      tar({
+        out: `$builddir/${localPKGJSON.name}.tgz`,
+        in: toPack,
+        dir: "$builddir/packages",
+      }),
+    ];
+  })();
 
   // Create a alias for building and testing the whole package
   phony({
     out: localPKGJSON.name,
-    in: [packageHasTypes, packageRunnable, createTar, ...testTargets],
+    in: [packageHasTypes, packageRunnable, ...createTar, ...testTargets],
   });
 }
 

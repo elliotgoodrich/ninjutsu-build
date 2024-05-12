@@ -1,6 +1,5 @@
 {
   "name": "@ninjutsu-build/integration",
-  "version": "0.0.1",
   "description": "Integration tests for the plugins",
   "author": "Elliot Goodrich",
   "scripts": {
