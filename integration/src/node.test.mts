@@ -74,16 +74,23 @@ describe("node tests", () => {
     const script2 = "script.cjs";
     writeFileSync(
       join(dir, script2),
-      "const fs = require('node:fs');\n" +
+      "const { parseArgs } = require('node:util');\n" +
+        "const { writeFileSync } = require('node:fs');\n" +
+        "const fs = require('node:fs');\n" +
         "const { two } = require('./number/two.cjs');\n" +
         "const { three } = require('./src/three.cjs');\n" +
-        "console.log(two + ' + 1 = ' + three);\n",
+        "const args = parseArgs({ options: { output: { type: 'string' } } });\n" +
+        "writeFileSync(args.values.output, two + ' + 1 = ' + three);\n",
     );
 
     const ninja = new NinjaBuilder({}, dir);
     const node = makeNodeRule(ninja);
-    const output = node({ in: script, out: "output.txt" });
-    const output2 = node({ in: script2, out: "output2.txt" });
+    const output = node({ in: script, out: "output.txt", args: ">" });
+    const output2 = node({
+      in: script2,
+      out: "output2.txt",
+      args: "--output",
+    });
     writeFileSync(join(dir, "build.ninja"), ninja.output);
 
     {
@@ -95,7 +102,7 @@ describe("node tests", () => {
     assert.strictEqual(readFileSync(join(dir, output)).toString(), "1 2 3 4\n");
     assert.strictEqual(
       readFileSync(join(dir, output2)).toString(),
-      "2 + 1 = 3\n",
+      "2 + 1 = 3",
     );
     assert.strictEqual(
       execSync("ninja", { cwd: dir }).toString().trim(),
