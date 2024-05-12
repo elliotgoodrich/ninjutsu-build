@@ -44,9 +44,8 @@ function getImportCode(ninja: NinjaBuilder): string {
   );
 }
 
-// In order to pipe to $out we need to run with `cmd /c` on Windows.  Additionally
-// we mention `node.exe` with the file extension to avoid the `winpty node` alias.
-const node = platform() === "win32" ? "cmd /c node.exe" : "node";
+// USe `node.exe` with the file extension to avoid the `winpty node` alias.
+const node = platform() === "win32" ? "node.exe" : "node";
 
 function getNodeCommand(ninja: NinjaBuilder): string {
   return `${node} --require "${resolvePath(
@@ -64,6 +63,26 @@ function getNodeCommand(ninja: NinjaBuilder): string {
  * is later modified, `ninja` will rebuild `out` without you having to explicitly add
  * dependencies.
  *
+ * For example, given the script that writes "Hello World!" to the file passed as the
+ * `--output` parameter,
+ *
+ * ```ts
+ * import { parseArgs } from "node:util";
+ * import { writeFileSync } from "node:fs";
+ *
+ * const args = parseArgs({
+ *   options: {
+ *     output: {
+ *       type: "string",
+ *     },
+ *   },
+ * });
+ *
+ * writeFileSync(args.values.output, "Hello World!");
+ * ```
+ *
+ * We can invoke this with `ninjutsu-build` like so,
+ *
  * ```ts
  * import { NinjaBuilder } from "@ninjutsu-build/core";
  * import { makeNodeRule } from "@ninjutsu-build/node";
@@ -73,16 +92,20 @@ function getNodeCommand(ninja: NinjaBuilder): string {
  * node({
  *   in: "src/index.js",
  *   out: "$builddir/out.txt",
+ *   args: "--output",
  * });
  * ```
  *
- * If `src/index.js` contains an import:
+ * If instead your script writes to the console then you can use shell redirection
+ * within the `args` parameter,
  *
- * ```js
- * import { f } from "./other.js";
+ * ```ts
+ * node({
+ *   in: "src/index.js",
+ *   out: "$builddir/out.txt",
+ *   args: ">",
+ * });
  * ```
- *
- * then there will be a dependency on "src/other.js".
  */
 export function makeNodeRule(
   ninja: NinjaBuilder,
@@ -90,15 +113,17 @@ export function makeNodeRule(
 ): <O extends string>(a: {
   in: Input<string>;
   out: O;
-  args?: string;
+  args: string;
   nodeArgs?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
+  // Run within `cmd` in Windows in case the user wants to pipe the output to a file
+  const prefix = platform() === "win32" ? "cmd /c " : "";
   return ninja.rule(name, {
-    command: getNodeCommand(ninja) + " $nodeArgs $in $args > $out",
+    command: prefix + getNodeCommand(ninja) + " $nodeArgs $in $args $out",
     description: "Creating $out from 'node $in'",
     out: needs<string>(),
     in: needs<Input<string>>(),

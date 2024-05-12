@@ -6,7 +6,7 @@ import { makeNodeRule, makeNodeTestRule } from "./node.js";
 test("makeNodeRule", () => {
   const ninja = new NinjaBuilder();
   const node = makeNodeRule(ninja);
-  const out: "out.txt" = node({ out: "out.txt", in: "in.js" });
+  const out: "out.txt" = node({ out: "out.txt", in: "in.js", args: "" });
   assert.equal(out, "out.txt");
   const myNode = makeNodeRule(ninja, "myNode");
   const out2: "out2.txt" = myNode({

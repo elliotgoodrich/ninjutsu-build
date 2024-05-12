@@ -55,6 +55,7 @@ describe("esbuild tests", () => {
     const output = node({
       in: entry,
       out: "output.txt",
+      args: ">",
     });
     writeFileSync(join(dir, "build.ninja"), ninja.output);
 
