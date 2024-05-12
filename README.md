@@ -1,6 +1,11 @@
 # Ninjutsu Build
 
-A set of TypeScript libraries for creating ninja files (https://ninja-build.org/).
+Orchestrate your build with TypeScript - execute it with native tools!
+
+`@ninjutsu-build/core` is a TypeScript library for creating
+[ninja](https://ninja-build.org/) files. Combined with a set of plugins for
+commonly used JavaScript tools, `@ninjutsu-build` can be used to orchestrate
+your JavaScript and TypeScript builds.
 
 Ninjutsu Build is built using itself. You can see the
 [configure.mjs](configure/configure.mjs) script used to generate the
@@ -10,13 +15,12 @@ Ninjutsu Build is built using itself. You can see the
 
 Some of the selling points of `@ninjutsu-build` are:
 
-  * TypeScript
-  * Type-safe design - easy to create build rules that require certain variables, or
-    can have optionally specified variables
-  * Simple and quick - all methods calls write directly to a `string` property
-  * Ninja rules return the value of the `out` argument, which makes it easier to use
-    linting tools to find unused build artifatcts
-  * Zero dependencies
+  * Orchestrate your build in JavaScript/TypeScript for ultimate flexibility
+  * Execute your build through native tooling for performance
+  * Timestamp checking and local-caching for fast incremental builds
+  * Per-file dependency tracking to rebuild only when absolutely necessary
+  * A set of plugins for formatting, linting, testing, and transpilation
+  * Easy to create additional plugins
 
 ## Plugins
 
@@ -51,9 +55,10 @@ $ npm install @ninjutsu-build/core --save-dev
 ## Basic Example
 
 ```ts
+// configure.ts
 import { NinjaBuilder, needs } from "@ninjutsu-build/core";
 import { makeTSCRule } from "@ninjutsu-build/tsc";
-import { makeNodeRule } from "@ninjutsu-build/node";
+import { makeNodeTestRule } from "@ninjutsu-build/node";
 import { writeFileSync } from "fs";
 
 // Create a `NinjaBuilder`
@@ -65,7 +70,7 @@ const ninja = new NinjaBuilder({
 // Create our rules, some from existing plugins, some from `NinjaBuilder.rule`
 ninja.comment("Rules");
 const tsc = makeTSCRule(ninja);
-const node = makeNodeRule(ninja);
+const test = makeNodeTestRule(ninja);
 const concat = ninja.rule("concat", {
   command: "concat $in > $out",
   description: "Concatting '$in' to $out",
@@ -91,10 +96,9 @@ const [index, indexTypes, test1, test1Types, test2, test2Types] = tsc({
 });
 
 // Run our 2 tests using node's test runner
-const results = [test1, test2].map((test) => node({
+const results = [test1, test2].map((test) => test({
   in: test,
   out: `$builddir/${test}.results.txt`,
-  args: "--test",
 }));
 
 // Concatenate the results to one file (not really needed here
@@ -108,15 +112,23 @@ concat({
 writeFileSync("build.ninja", ninja.output);
 ```
 
+Run this script with `npx tsx configure.ts` (or `ts-node` etc.) and then run `ninja`!
+
+After changing any of the mentioned TypeScript files mentioned in the script, just run
+`ninja` to rebuild only those outputs that are needed.
+
 ## Developer Guide
 
 ### Setup
 
-  1. Install `node` (>18)
-  2. Install `ninja` (>1.11)
+  1. Install [`node`](https://nodejs.org/en/download) (>=18)
+  2. Install [`ninja`](https://ninja-build.org/) (>=1.11)
   3. `npm ci --prefix configure`
-  4. `npm run configure`
+  4. `npm run configure` (or for a slightly faster option in node >=22 `node --run configure`)
 
 ### Building + linting + formatting + tests
 
   1. `ninja`
+
+If new files are added then you must run `npm run configure`/`node --run configure` again
+to regenerate a file `build.ninja` that includes these new files.
