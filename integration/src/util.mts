@@ -23,14 +23,36 @@ export function getDeps(cwd: string): Record<string, string[]> {
   return deps;
 }
 
-export function callNinja(cwd: string): string {
-  const { stdout, stderr, status } = spawnSync("ninja", ["-d", "keepdepfile"], {
-    cwd,
-  });
+export function callNinja(cwd: string, target?: string): string {
+  const extra = target === undefined ? [] : [target];
+  const { stdout, stderr, status } = spawnSync(
+    "ninja",
+    ["-d", "keepdepfile", ...extra],
+    {
+      cwd,
+    },
+  );
   const stdoutStr = stdout.toString();
   assert.strictEqual(stderr.toString(), "");
   assert.strictEqual(status, 0, stdoutStr);
   return stdoutStr;
+}
+
+export function callNinjaWithFailure(
+  cwd: string,
+  target?: string,
+): { stdout: string; stderr: string } {
+  const extra = target === undefined ? [] : [target];
+  const { stdout, stderr, status } = spawnSync(
+    "ninja",
+    ["-d", "keepdepfile", ...extra],
+    {
+      cwd,
+    },
+  );
+  const stdoutStr = stdout.toString();
+  assert.notStrictEqual(status, 0, stdout.toString());
+  return { stdout: stdoutStr, stderr: stderr.toString() };
 }
 
 export function depsMatch(

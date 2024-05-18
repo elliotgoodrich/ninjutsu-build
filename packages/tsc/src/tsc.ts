@@ -18,22 +18,35 @@ import ts from "typescript";
 import { platform } from "os";
 import { relative, resolve } from "node:path";
 
+// In order to pipe to $out we need to run with `cmd /c` on Windows.
+const prefix = platform() === "win32" ? "cmd /c " : "";
+
 // Use `node.exe` on windows to avoid the `winpty node` alias and for a
 // small increase in performance.
 const node = platform() === "win32" ? "node.exe" : "node";
 
-function getRunTSCPath(ninja: NinjaBuilder): string {
+// Use `call` + delayed expansion on windows otherwise we get the
+// `errorLevel` of whatever command was run before. See this answer
+// for more details https://stackoverflow.com/a/11178012
+const echoErrCode =
+  platform() === "win32" ? "call echo %^^errorLevel%" : "echo $$?";
+const next = platform() === "win32" ? " &" : ";";
+
+function getParseOutputPath(ninja: NinjaBuilder): string {
+  // Replacing backslashes is not necessary because we pass these paths to node,
+  // which understands both. It's just a bit easier on Windows to be able to
+  // copy and paste commands results into a non-cmd shell.
   return relative(
     resolve(process.cwd(), ninja.outputDir),
-    require.resolve("./runTSC.mjs"),
-  );
+    require.resolve("./parseOutput.mjs"),
+  ).replaceAll("\\", "/");
 }
 
 function getTSCPath(ninja: NinjaBuilder): string {
   return relative(
     resolve(process.cwd(), ninja.outputDir),
     require.resolve("typescript/bin/tsc"),
-  );
+  ).replaceAll("\\", "/");
 }
 
 function compilerOptionToArray(
@@ -82,9 +95,6 @@ export function compilerOptionsToString(
 ): string {
   return compilerOptionsToArray(compilerOptions).join(" ");
 }
-
-// In order to pipe to $out we need to run with `cmd /c` on Windows.
-const prefix = platform() === "win32" ? "cmd /c " : "";
 
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
@@ -135,9 +145,11 @@ export function makeTypeCheckRule(
   const typecheck = ninja.rule(name, {
     command:
       prefix +
-      `${node} ${getRunTSCPath(ninja)} --tsc ${getTSCPath(
+      `(${node} ${getTSCPath(
         ninja,
-      )} --touch $out --out $out --depfile $out.depfile --listFiles --noEmit $args -- $in`,
+      )} --listFiles --noEmit $args $in${next} ${echoErrCode}) | ${node} ${getParseOutputPath(
+        ninja,
+      )} $out --touch`,
     description: "Typechecking $in",
     in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
@@ -243,9 +255,11 @@ export function makeTSCRule(
   const tsc = ninja.rule(name, {
     command:
       prefix +
-      `${node} ${getRunTSCPath(ninja)} --tsc ${getTSCPath(
+      `(${node} ${getTSCPath(
         ninja,
-      )} --out $out --depfile $out.depfile --listFiles $args -- $in`,
+      )} --listFiles $args $in${next} ${echoErrCode}) | ${node} ${getParseOutputPath(
+        ninja,
+      )} $out`,
     description: "Compiling $in",
     depfile: "$out.depfile",
     deps: "gcc",

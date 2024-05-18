@@ -1,7 +1,7 @@
 import { beforeEach, test, describe } from "node:test";
 import { strict as assert } from "node:assert";
-import { NinjaBuilder } from "@ninjutsu-build/core";
-import { makeTSCRule } from "@ninjutsu-build/tsc";
+import { NinjaBuilder, getInput, validations } from "@ninjutsu-build/core";
+import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
 import {
   writeFileSync,
   mkdirSync,
@@ -9,9 +9,8 @@ import {
   symlinkSync,
   existsSync,
 } from "node:fs";
-import { execSync, spawnSync } from "node:child_process";
 import { join } from "node:path/posix";
-import { getDeps } from "./util.mjs";
+import { getDeps, callNinja, callNinjaWithFailure } from "./util.mjs";
 import { relative as relativeNative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -51,7 +50,8 @@ describe("tsc tests", () => {
       "export function negate(n: number): number { return -n; }\n",
     );
 
-    const add = "add.cts";
+    // Include a space in the filename to check we are escaping characters
+    const add = "add together.cts";
     writeFileSync(
       join(dir, add),
       "export function add(a: number, b: number): number { return a + b; }\n",
@@ -63,7 +63,9 @@ describe("tsc tests", () => {
     const subtract = (() => {
       const impDir = join(dir, "imp");
       mkdirSync(impDir);
-      const subtract = "subtract.cts";
+
+      // Use `$` in the file name to check character escaping
+      const subtract = "$ubtract.cts";
       writeFileSync(
         join(impDir, subtract),
         "export function subtract(a: number, b: number): number { return a - b; }\n",
@@ -84,8 +86,8 @@ describe("tsc tests", () => {
     writeFileSync(
       join(dir, script),
       "import { negate } from './negate.mjs';\n" +
-        "import { add } from './add.cjs';\n" +
-        "import { subtract } from './src/subtract.cjs';\n" +
+        "import { add } from './add together.cjs';\n" +
+        "import { subtract } from './src/$ubtract.cjs';\n" +
         "console.log(negate(1));\n" +
         "console.log(add(2, 3));\n" +
         "console.log(subtract(4, 5));\n",
@@ -96,44 +98,65 @@ describe("tsc tests", () => {
     const script2 = "script.cts";
     writeFileSync(
       join(dir, script2),
-      "const { add } = require('./add.cjs');\n" +
-        "const { subtract } = require('./src/subtract.cjs');\n" +
+      "const { add } = require('./add together.cjs');\n" +
+        "const { subtract } = require('./src/$ubtract.cjs');\n" +
         "console.log(add('2', 3));\n" +
         "console.log(subtract(4, 5));\n",
     );
 
+    const err1 = "err1.cts";
+    writeFileSync(join(dir, err1), "const x: number = null;");
+
+    const err2 = "err2.cts";
+    writeFileSync(join(dir, err2), "import { bad } from './add together.cjs';");
+
     const ninja = new NinjaBuilder({}, dir);
     const tsc = makeTSCRule(ninja);
+    const typecheck = makeTypeCheckRule(ninja);
     const output = tsc({ in: [script], compilerOptions });
     const output2 = tsc({ in: [script2], compilerOptions });
+    const [stamp] = typecheck({
+      in: [script],
+      out: "typecheck.stamp",
+      compilerOptions,
+    });
+    ninja.default(...output, ...output2, stamp[validations]);
+    const err1Target = ninja.phony({
+      out: "err1",
+      in: tsc({ in: [err1], compilerOptions })[0],
+    });
+    const err2Target = ninja.phony({
+      out: "err2",
+      in: tsc({ in: [err2], compilerOptions })[0],
+    });
     writeFileSync(join(dir, "build.ninja"), ninja.output);
 
     {
-      const { stdout, stderr, status } = spawnSync(
-        "ninja",
-        ["-d", "keepdepfile"],
-        { cwd: dir },
-      );
-      const stdoutStr = stdout.toString();
-      assert.strictEqual(stderr.toString(), "");
-      assert.strictEqual(status, 0, stdoutStr);
-      assert.match(stdoutStr, /Compiling script.mts/);
-      assert.match(stdoutStr, /Compiling script.cts/);
+      const stdout = callNinja(dir);
+      assert.match(stdout, /Compiling script.mts/);
+      assert.match(stdout, /Compiling script.cts/);
+      assert.match(stdout, /Typechecking script.mts/);
     }
 
-    for (const out of [...output, ...output2]) {
+    for (const out of [output, output2, getInput(stamp)].flat()) {
       assert.strictEqual(existsSync(join(dir, out)), true);
     }
 
-    assert.strictEqual(
-      execSync("ninja", { cwd: dir }).toString().trim(),
-      "ninja: no work to do.",
-    );
+    assert.strictEqual(callNinja(dir).trimEnd(), "ninja: no work to do.");
     const deps = getDeps(dir);
     assert.deepEqual(
       new Set(Object.keys(deps)),
-      new Set([...output, ...output2]),
+      new Set([...output, ...output2, stamp[validations]]),
     );
+
+    {
+      // Check that we have the same dependencies whether we typecheck or
+      // generate code/types if we have the same inputs
+      const lhs = deps[output[0]];
+      const rhs = deps[stamp[validations]];
+      assert.deepEqual(lhs.sort(), rhs.sort());
+    }
+
     for (const out of output) {
       assert.notStrictEqual(deps[out].indexOf(negate), -1, `Missing ${negate}`);
       assert.notStrictEqual(deps[out].indexOf(add), -1, `Missing ${add}`);
@@ -158,7 +181,36 @@ describe("tsc tests", () => {
         `${subtract} should be missing`,
       );
     }
-  });
 
+    {
+      const { stdout, stderr } = callNinjaWithFailure(dir, err1Target);
+      assert.deepEqual(stderr, "");
+      assert(stdout.includes("Compiling err1.cts"), stdout);
+      assert(
+        stdout.includes(
+          "error TS2322: Type 'null' is not assignable to type 'number'",
+        ),
+        stdout,
+      );
+
+      // Check that we correctly cull most of the input
+      assert(stdout.split("\n").length < 10, stdout);
+    }
+
+    {
+      const { stdout, stderr } = callNinjaWithFailure(dir, err2Target);
+      assert.deepEqual(stderr, "");
+      assert(stdout.includes("Compiling err2.cts"), stdout);
+      assert(
+        stdout.includes(
+          "error TS2305: Module '\"./add together.cjs\"' has no exported member 'bad'",
+        ),
+        stdout,
+      );
+
+      // Check that we correctly cull most of the input
+      assert(stdout.split("\n").length < 10, stdout);
+    }
+  });
   // TODO: Check the `incremental` flag works correctly
 });
