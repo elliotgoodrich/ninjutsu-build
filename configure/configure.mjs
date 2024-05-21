@@ -196,6 +196,7 @@ const compilerOptions = {
   noFallthroughCasesInSwitch: true,
   skipDefaultLibCheck: true,
   skipLibCheck: true,
+  isolatedModules: true,
 };
 
 const ninja = new NinjaBuilder({
