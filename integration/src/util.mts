@@ -1,5 +1,23 @@
 import { execSync, spawnSync } from "node:child_process";
 import { strict as assert } from "node:assert";
+import { mkdirSync, rmSync } from "node:fs";
+
+export function getTestDir(
+  suiteCtx: { readonly name: string },
+  testCtx: { readonly name: string },
+): string {
+  return `integration/dist/${suiteCtx.name}/${testCtx.name}`;
+}
+
+export function setup(suiteCtx: { readonly name: string }): (s: {
+  readonly name: string;
+}) => void {
+  return (testCtx: { readonly name: string }) => {
+    const dir = getTestDir(suiteCtx, testCtx);
+    rmSync(dir, { force: true, recursive: true });
+    mkdirSync(dir, { recursive: true });
+  };
+}
 
 export function getDeps(cwd: string): Record<string, string[]> {
   const deps: Record<string, string[]> = {};

@@ -4,20 +4,15 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeESBuildRule } from "@ninjutsu-build/esbuild";
 import { makeNodeRule } from "@ninjutsu-build/node";
-import { mkdirSync, rmSync } from "node:fs";
 import { execSync, spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { getDeps } from "./util.mjs";
+import { getDeps, getTestDir, setup } from "./util.mjs";
 
-const dir = join("integration", "staging", "esbuild");
+describe("esbuild", (suiteCtx) => {
+  beforeEach(setup(suiteCtx));
 
-describe("esbuild tests", () => {
-  beforeEach(() => {
-    rmSync(dir, { force: true, recursive: true });
-    mkdirSync(dir);
-  });
-
-  test("Basic example", () => {
+  test("Basic example", (testCtx) => {
+    const dir = getTestDir(suiteCtx, testCtx);
     const add = "add.mts";
     writeFileSync(
       join(dir, add),

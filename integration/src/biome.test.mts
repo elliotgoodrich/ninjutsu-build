@@ -8,19 +8,17 @@ import {
   makeLintRule,
   makeFormatToRule,
 } from "@ninjutsu-build/biome";
-import { mkdirSync, rmSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { execSync, spawnSync } from "node:child_process";
 import { join } from "node:path/posix";
+import { getTestDir, setup } from "./util.mjs";
 
-const dir = join("integration", "staging", "biome");
+describe("biome", (suiteCtx) => {
+  beforeEach(setup(suiteCtx));
 
-describe("biome tests", () => {
-  beforeEach(() => {
-    rmSync(dir, { force: true, recursive: true });
-    mkdirSync(dir);
-  });
+  test("Basic example", (testCtx) => {
+    const dir = getTestDir(suiteCtx, testCtx);
 
-  test("Basic example", () => {
     const formatted = "formatted.mts";
     writeFileSync(join(dir, formatted), "export const value = { foo: 1 };\n");
     const unformatted = "unformatted.mts";
