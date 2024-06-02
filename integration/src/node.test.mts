@@ -3,20 +3,16 @@ import { strict as assert } from "node:assert";
 import { readFileSync, writeFileSync } from "node:fs";
 import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeNodeRule } from "@ninjutsu-build/node";
-import { mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join } from "node:path";
-import { callNinja, depsMatch, getDeps } from "./util.mjs";
+import { callNinja, depsMatch, getDeps, setup, getTestDir } from "./util.mjs";
 
-const dir = join("integration", "staging", "node");
+describe("node", (suiteCtx) => {
+  beforeEach(setup(suiteCtx));
 
-describe("node tests", () => {
-  beforeEach(() => {
-    rmSync(dir, { force: true, recursive: true });
-    mkdirSync(dir);
-  });
-
-  test("Basic example", () => {
+  test("Basic example", (testCtx) => {
+    const dir = getTestDir(suiteCtx, testCtx);
     const zero = "number/zero.cjs";
     mkdirSync(join(dir, "number"));
     writeFileSync(join(dir, zero), "exports.zero = 0;\n");

@@ -2,48 +2,23 @@ import { beforeEach, test, describe } from "node:test";
 import { strict as assert } from "node:assert";
 import { NinjaBuilder, getInput, validations } from "@ninjutsu-build/core";
 import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
-import {
-  writeFileSync,
-  mkdirSync,
-  rmSync,
-  symlinkSync,
-  existsSync,
-} from "node:fs";
+import { writeFileSync, mkdirSync, symlinkSync, existsSync } from "node:fs";
 import { join } from "node:path/posix";
-import { getDeps, callNinja, callNinjaWithFailure } from "./util.mjs";
+import {
+  getDeps,
+  callNinja,
+  callNinjaWithFailure,
+  getTestDir,
+  setup,
+} from "./util.mjs";
 import { relative as relativeNative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const dir = join("integration", "staging", "tsc");
+describe("tsc", (suiteCtx) => {
+  beforeEach(setup(suiteCtx));
 
-// Tell TypeScript to look for `@types/node` package installed in the
-// workspace `node_modules` directory, otherwise it'll fail to find it
-const typeRoots = [
-  relativeNative(
-    dir,
-    fileURLToPath(import.meta.resolve("@types/node/package.json")),
-  )
-    .split(sep)
-    .slice(0, -2)
-    .join("/"),
-];
-
-const compilerOptions = {
-  outDir: "dist",
-  declaration: true,
-  strict: true,
-  alwaysStrict: true,
-  skipLibCheck: true,
-  typeRoots,
-};
-
-describe("tsc tests", () => {
-  beforeEach(() => {
-    rmSync(dir, { force: true, recursive: true });
-    mkdirSync(dir);
-  });
-
-  test("Basic example", () => {
+  test("Basic example", (testCtx) => {
+    const dir = getTestDir(suiteCtx, testCtx);
     const negate = "negate.mts";
     writeFileSync(
       join(dir, negate),
@@ -113,6 +88,28 @@ describe("tsc tests", () => {
     const ninja = new NinjaBuilder({}, dir);
     const tsc = makeTSCRule(ninja);
     const typecheck = makeTypeCheckRule(ninja);
+
+    // Tell TypeScript to look for `@types/node` package installed in the
+    // workspace `node_modules` directory, otherwise it'll fail to find it
+    const typeRoots = [
+      relativeNative(
+        dir,
+        fileURLToPath(import.meta.resolve("@types/node/package.json")),
+      )
+        .split(sep)
+        .slice(0, -2)
+        .join("/"),
+    ];
+
+    const compilerOptions = {
+      outDir: "dist",
+      declaration: true,
+      strict: true,
+      alwaysStrict: true,
+      skipLibCheck: true,
+      typeRoots,
+    };
+
     const output = tsc({ in: [script], compilerOptions });
     const output2 = tsc({ in: [script2], compilerOptions });
     const [stamp] = typecheck({
