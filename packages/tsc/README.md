@@ -25,7 +25,7 @@ We can build a `build.ninja` file that will compile `index.ts` and
 use `@ninjutsu-build/node` to run the resulting JavaScript,
 
 ```ts
-import { NinjaBuilder, [implicitDeps] } from "@ninjutsu-build/core";
+import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeTSCRule } from "@ninjutsu-build/tsc";
 import { makeNodeRule } from "@ninjutsu-build/node";
 import { writeFileSync } from "fs";
