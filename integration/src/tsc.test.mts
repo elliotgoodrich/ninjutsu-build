@@ -117,6 +117,7 @@ describe("tsc", (suiteCtx) => {
       out: "typecheck.stamp",
       compilerOptions,
     });
+
     ninja.default(...output, ...output2, stamp[validations]);
     const err1Target = ninja.phony({
       out: "err1",
@@ -209,5 +210,67 @@ describe("tsc", (suiteCtx) => {
       assert(stdout.split("\n").length < 10, stdout);
     }
   });
+
+  test("tsconfig", async (testCtx) => {
+    const dir = getTestDir(suiteCtx, testCtx);
+    const script = "script.mts";
+    writeFileSync(join(dir, script), "console.log('Hello World!');\n");
+
+    const tsConfig = join(dir, "tsconfig.json");
+    writeFileSync(
+      tsConfig,
+      JSON.stringify(
+        {
+          files: [script],
+          compilerOptions: {
+            outDir: "myOutput",
+            declaration: true,
+            strict: true,
+            alwaysStrict: true,
+            skipLibCheck: true,
+          },
+        },
+        undefined,
+        4,
+      ),
+    );
+
+    const ninja = new NinjaBuilder({}, dir);
+    const tsc = makeTSCRule(ninja);
+    const typecheck = makeTypeCheckRule(ninja);
+
+    const out = await tsc({ tsConfig: "tsconfig.json" });
+    assert.deepEqual(out, ["myOutput/script.mjs", "myOutput/script.d.mts"]);
+
+    const typechecked = await typecheck({
+      tsConfig: "tsconfig.json",
+      out: "typechecked.stamp",
+    });
+    assert.deepEqual(typechecked, [
+      { file: "script.mts", [validations]: "typechecked.stamp" },
+    ]);
+
+    writeFileSync(join(dir, "build.ninja"), ninja.output);
+
+    {
+      const stdout = callNinja(dir);
+      assert.match(stdout, /Compiling tsconfig.json/);
+      assert.match(stdout, /Typechecking tsconfig.json/);
+    }
+
+    for (const output of out) {
+      const path = join(dir, getInput(output));
+      assert(existsSync(path), `${path} doesn't exist`);
+    }
+
+    {
+      const path = join(dir, getInput("typechecked.stamp"));
+      assert(existsSync(path), `${path} doesn't exist`);
+    }
+
+    assert.strictEqual(callNinja(dir).trimEnd(), "ninja: no work to do.");
+  });
+
   // TODO: Check the `incremental` flag works correctly
+  test("incremental", { todo: true });
 });
