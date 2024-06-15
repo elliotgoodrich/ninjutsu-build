@@ -157,6 +157,7 @@ export type TypeCheckRuleFn = {
 
   <O2 extends string>(a: {
     tsConfig: string;
+    compilerOptions?: CompilerOptions;
     out: O2;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -167,12 +168,12 @@ export type TypeCheckRuleFn = {
     a: (
       | {
           in: readonly Input<string>[];
-          compilerOptions?: CompilerOptions;
         }
       | {
           tsConfig: Input<string>;
         }
     ) & {
+      compilerOptions?: CompilerOptions;
       out: O3;
       [implicitDeps]?: string | readonly string[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -241,12 +242,12 @@ export function makeTypeCheckRule(
     a: (
       | {
           in: readonly Input<string>[];
-          compilerOptions?: CompilerOptions;
         }
       | {
           tsConfig: Input<string>;
         }
     ) & {
+      compilerOptions?: CompilerOptions;
       out: O;
       [implicitDeps]?: string | readonly string[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -270,7 +271,7 @@ export function makeTypeCheckRule(
       const typechecked = typecheck({
         in: [a.tsConfig],
         out: a.out,
-        args: "-p",
+        args: compilerOptionsToString(a.compilerOptions ?? {}) + " -p",
       });
       return getFileNames(ninja, a.tsConfig).then(({ files }) =>
         files.map((file) => ({
@@ -293,6 +294,7 @@ export type TSCRuleFn = {
   }): string[];
   (a: {
     tsConfig: Input<string>;
+    compilerOptions?: CompilerOptions;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
@@ -302,12 +304,12 @@ export type TSCRuleFn = {
     a: (
       | {
           in: readonly Input<string>[];
-          compilerOptions?: CompilerOptions;
         }
       | {
           tsConfig: Input<string>;
         }
     ) & {
+      compilerOptions?: CompilerOptions;
       [implicitDeps]?: string | readonly string[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
       [implicitOut]?: string | readonly string[];
@@ -399,12 +401,12 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
     a: (
       | {
           in: readonly Input<string>[];
-          compilerOptions?: CompilerOptions;
         }
       | {
           tsConfig: Input<string>;
         }
     ) & {
+      compilerOptions?: CompilerOptions;
       [implicitDeps]?: string | readonly string[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
       [implicitOut]?: string | readonly string[];
@@ -441,14 +443,21 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
     } else {
       const {
         tsConfig,
+        compilerOptions: overrideOptions = {},
         [implicitOut]: _implicitOut = [],
         [validations]: _validations,
         ...rest
       } = a;
       return getFileNames(ninja, tsConfig).then(
         ({ files, compilerOptions }) => {
+          const finalCompilerOptions = {
+            ...compilerOptions,
+            ...overrideOptions,
+          };
           const commandLine = ts.parseCommandLine(
-            files.concat(compilerOptionsToArrayBestEffort(compilerOptions)),
+            files.concat(
+              compilerOptionsToArrayBestEffort(finalCompilerOptions),
+            ),
           );
 
           // We need to set this to something, else we get a debug exception
@@ -462,7 +471,7 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
             ...rest,
             in: [tsConfig],
             out: out[0],
-            args: "-p",
+            args: compilerOptionsToString(finalCompilerOptions) + " -p",
             [implicitOut]: out.slice(1).concat(_implicitOut),
             [validations]:
               _validations === undefined ? undefined : () => _validations(out),

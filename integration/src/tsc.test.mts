@@ -214,7 +214,10 @@ describe("tsc", (suiteCtx) => {
   test("tsconfig", async (testCtx) => {
     const dir = getTestDir(suiteCtx, testCtx);
     const script = "script.mts";
-    writeFileSync(join(dir, script), "console.log('Hello World!');\n");
+    writeFileSync(
+      join(dir, script),
+      "function greet(msg): void { console.log(msg); }\ngreet('Hello World!');\n",
+    );
 
     const tsConfig = join(dir, "tsconfig.json");
     writeFileSync(
@@ -223,10 +226,8 @@ describe("tsc", (suiteCtx) => {
         {
           files: [script],
           compilerOptions: {
+            noImplicitAny: false,
             outDir: "myOutput",
-            declaration: true,
-            strict: true,
-            alwaysStrict: true,
             skipLibCheck: true,
           },
         },
@@ -239,7 +240,10 @@ describe("tsc", (suiteCtx) => {
     const tsc = makeTSCRule(ninja);
     const typecheck = makeTypeCheckRule(ninja);
 
-    const out = await tsc({ tsConfig: "tsconfig.json" });
+    const out = await tsc({
+      tsConfig: "tsconfig.json",
+      compilerOptions: { declaration: true },
+    });
     assert.deepEqual(out, ["myOutput/script.mjs", "myOutput/script.d.mts"]);
 
     const typechecked = await typecheck({
@@ -250,6 +254,19 @@ describe("tsc", (suiteCtx) => {
       { file: "script.mts", [validations]: "typechecked.stamp" },
     ]);
 
+    const failed = await typecheck({
+      tsConfig: "tsconfig.json",
+      out: "failed.stamp",
+      compilerOptions: {
+        noImplicitAny: true,
+      },
+    });
+    assert.deepEqual(failed, [
+      { file: "script.mts", [validations]: "failed.stamp" },
+    ]);
+
+    const err = ninja.phony({ out: "err", in: failed[0][validations] });
+    ninja.default(...out, typechecked[0][validations]);
     writeFileSync(join(dir, "build.ninja"), ninja.output);
 
     {
@@ -269,6 +286,14 @@ describe("tsc", (suiteCtx) => {
     }
 
     assert.strictEqual(callNinja(dir).trimEnd(), "ninja: no work to do.");
+
+    {
+      const { stdout } = callNinjaWithFailure(dir, err);
+      assert.match(
+        stdout,
+        /error TS7006: Parameter 'msg' implicitly has an 'any' type/,
+      );
+    }
   });
 
   // TODO: Check the `incremental` flag works correctly
