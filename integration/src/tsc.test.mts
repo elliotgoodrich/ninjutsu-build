@@ -219,21 +219,37 @@ describe("tsc", (suiteCtx) => {
       "function greet(msg): void { console.log(msg); }\ngreet('Hello World!');\n",
     );
 
+    const baseConfig = join(dir, "base.json");
+    writeFileSync(
+      baseConfig,
+      "// tsconfig is a jsonc file and allows comments\n" +
+        JSON.stringify(
+          {
+            compilerOptions: {
+              outDir: "myOutput",
+            },
+          },
+          undefined,
+          4,
+        ),
+    );
+
     const tsConfig = join(dir, "tsconfig.json");
     writeFileSync(
       tsConfig,
-      JSON.stringify(
-        {
-          files: [script],
-          compilerOptions: {
-            noImplicitAny: false,
-            outDir: "myOutput",
-            skipLibCheck: true,
+      "// tsconfig is a jsonc file and allows comments\n" +
+        JSON.stringify(
+          {
+            files: [script],
+            extends: ["./base"],
+            compilerOptions: {
+              noImplicitAny: false,
+              skipLibCheck: true,
+            },
           },
-        },
-        undefined,
-        4,
-      ),
+          undefined,
+          4,
+        ),
     );
 
     const ninja = new NinjaBuilder({}, dir);
@@ -286,6 +302,17 @@ describe("tsc", (suiteCtx) => {
     }
 
     assert.strictEqual(callNinja(dir).trimEnd(), "ninja: no work to do.");
+
+    const deps = getDeps(dir);
+    assert.notDeepEqual(
+      deps["myOutput/script.mjs"].indexOf("tsconfig.json"),
+      -1,
+      "Missing tsconfig.json dependency",
+    );
+    assert.notDeepEqual(
+      deps["myOutput/script.mjs"].indexOf("base.json"),
+      "Missing base.json dependency",
+    );
 
     {
       const { stdout } = callNinjaWithFailure(dir, err);

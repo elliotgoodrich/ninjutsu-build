@@ -17,11 +17,12 @@ import type {
 import ts from "typescript";
 import { platform } from "os";
 import { join, relative, resolve } from "node:path";
-import { readFileSync } from "node:fs";
+import { readFile as readFileCb } from "node:fs";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFile = promisify(execFileCb);
+const readFile = promisify(readFileCb);
 
 // In order to pipe to $out we need to run with `cmd /c` on Windows.
 const prefix = platform() === "win32" ? "cmd /c " : "";
@@ -36,6 +37,27 @@ const node = platform() === "win32" ? "node.exe" : "node";
 const echoErrCode =
   platform() === "win32" ? "call echo %^^errorLevel%" : "echo $$?";
 const next = platform() === "win32" ? " &" : ";";
+
+// Cache the path to `tsc` relative to our process
+const tsc = relative(
+  process.cwd(),
+  require.resolve("typescript/bin/tsc"),
+).replaceAll("\\", "/");
+
+// In typescript's `getOutputFileNames` there is a debug assertion that the command
+// line contains the same string as you pass for the next argument. However, they
+// first call their `normalizePath` method first so if your path is not pre-normalized
+// we'll hit this issue. e.g. `getOutputFileNames("./foo.mts", "./foo.mts")` will fail
+// as they try to find "foo.mts" in "./foo.mts".
+//
+// The line hit is:
+//     Debug.assert(contains(commandLine.fileNames, inputFileName), `Expected fileName to be present in command line`);
+//
+// This implementation is not the same as typescript's, but it should catch most issues.
+function normalizePath(path: string): string {
+  const fixedSlashes = path.replaceAll("\\", "/");
+  return fixedSlashes.startsWith("./") ? fixedSlashes.slice(2) : fixedSlashes;
+}
 
 function getParseOutputPath(ninja: NinjaBuilder): string {
   // Replacing backslashes is not necessary because we pass these paths to node,
@@ -125,23 +147,51 @@ function compilerOptionsToArrayBestEffort(
 async function getFileNames(
   ninja: NinjaBuilder,
   tsConfig: Input<string>,
-): Promise<{ files: string[]; compilerOptions: CompilerOptions }> {
+): Promise<string[]> {
   const tsConfigPath = join(ninja.outputDir, getInput(tsConfig));
-  let tsConfigObj = JSON.parse(readFileSync(tsConfigPath).toString());
-  if (Array.isArray(tsConfigObj.include) && tsConfigObj.include.length > 0) {
+  const buffer = await readFile(tsConfigPath);
+
+  // Use TypeScript's parsing to handle comments
+  let { config, error } = ts.parseConfigFileTextToJson(
+    tsConfigPath,
+    buffer.toString(),
+  );
+  if (config === undefined) {
+    throw new Error(
+      error === undefined
+        ? `Unknown error while parsing ${tsConfigPath}`
+        : `${error.messageText}`,
+    );
+  }
+  if (Array.isArray(config.include) && config.include.length > 0) {
     const { stdout } = await execFile(node, [
-      getTSCPath(ninja),
+      tsc,
       "--showConfig",
       "--project",
       tsConfigPath,
     ]);
-    tsConfigObj = JSON.parse(stdout);
+    // `--showConfig` displays valid JSON so use the built-in parser
+    config = JSON.parse(stdout);
   }
 
-  return {
-    files: tsConfigObj.files,
-    compilerOptions: tsConfigObj.compilerOptions,
-  };
+  return config.files;
+}
+
+/**
+ * Return the JSON result of running `tsc --showConfig` with the specified `tsConfig` file.
+ */
+async function showConfig(
+  ninja: NinjaBuilder,
+  tsConfig: Input<string>,
+): Promise<{ files: string[]; compilerOptions: CompilerOptions }> {
+  const { stdout } = await execFile(node, [
+    tsc,
+    "--showConfig",
+    "--project",
+    join(ninja.outputDir, getInput(tsConfig)),
+  ]);
+
+  return JSON.parse(stdout);
 }
 
 export type TypeCheckRuleFn = {
@@ -187,16 +237,24 @@ export type TypeCheckRuleFn = {
 
 /**
  * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `tsc` to type check all TypeScript files provided to `in`, and write an empty file
- * to `out` if successful.
+ * run `tsc` to type check all TypeScript files, and write an empty file to `out` if
+ * successful.
  *
- * It is not necessary to specify all TypeScript files for the `in` argument, only the
- * entry points are needed.  Other TypeScript files that are `import`ed are added as
- * dependencies automatically by the `ninja` rule. This will cause the rule to be
- * rebuilt if any of these files are modified.
+ * Files can be specified by either by listing them in the `in` property or by
+ * specifying them in a `tsconfig.json` file and passing the path to it to the
+ * `tsconfig` property.
  *
- * No `tsconfig.json` file will be used in this rule.  Instead, all TypeScript compiler
- * options must be specified when creating the `ninja` build edge.
+ * It is not necessary to specify all TypeScript files, only the entry points are
+ * needed.  Other TypeScript files (and `tsconfig.json` file if used) that are
+ * `import`ed are added as dependencies automatically by the `ninja` rule. This
+ * will cause the rule to be rebuilt if any of these files are modified.
+ *
+ * No matter how files are specified, `tsc` compilation options can be supplied with
+ * `compilerOptions` and will override any other options in the `tsconfig.json` file.
+ *
+ * WARNING! When adding new entry points to `tsconfig.json` or changing any options
+ * that control the number or location of output files, the ninja file needs to be
+ * regenerated to account for these.
  *
  * For example:
  *
@@ -218,6 +276,32 @@ export type TypeCheckRuleFn = {
  *
  * Will create an empty file `$builddir/typechecked.stamp` if both `src/entrypoint1.ts` and
  * `src/entrypoint2.ts` (and all TypeScript files they `import`) are valid TypeScript.
+ *
+ * This can be done with the following `tsconfig.json` file
+ *
+ * ```json
+ * {
+ *     "files": ["entrypoint1.ts", "entrypoint2.ts"],
+ *     "compilerOptions": {
+ *         "noImplicitAny": true,
+ *         "isolatedModules": true
+ *     }
+ * }
+ * ```
+ *
+ * and the following configuration file:
+ *
+ * ```ts
+ * import { NinjaBuilder } from "@ninjutsu-build/core";
+ * import { makeTypeCheckRule } from "@ninjutsu-build/tsc";
+ *
+ * const ninja = new NinjaBuilder();
+ * const typecheck = makeTypeCheckRule(ninja);
+ * const checked = typecheck({
+ *   tsconfig: "src/tsconfig.json",
+ *   out: "$builddir/typechecked.stamp",
+ * });
+ * ```
  */
 export function makeTypeCheckRule(
   ninja: NinjaBuilder,
@@ -228,15 +312,16 @@ export function makeTypeCheckRule(
       prefix +
       `(${node} ${getTSCPath(
         ninja,
-      )} --listFiles --noEmit $args $in${next} ${echoErrCode}) | ${node} ${getParseOutputPath(
+      )} --listFiles --noEmit $args $in${next} ${echoErrCode}) | ${node} --experimental-import-meta-resolve ${getParseOutputPath(
         ninja,
-      )} $out --touch`,
+      )} $out --touch $tsconfig`,
     description: "Typechecking $in",
     in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
     depfile: "$out.depfile",
     deps: "gcc",
     args: needs<string>(),
+    tsconfig: "",
   });
   return (<O extends string>(
     a: (
@@ -272,8 +357,9 @@ export function makeTypeCheckRule(
         in: [a.tsConfig],
         out: a.out,
         args: compilerOptionsToString(a.compilerOptions ?? {}) + " -p",
+        tsconfig: `--tsconfig ${a.tsConfig}`,
       });
-      return getFileNames(ninja, a.tsConfig).then(({ files }) =>
+      return getFileNames(ninja, a.tsConfig).then((files) =>
         files.map((file) => ({
           file,
           [validations]: typechecked,
@@ -323,13 +409,21 @@ export type TSCRuleFn = {
  * run `tsc` to type check and generate corresponding TypeScript files for `in` and
  * any TypeScript files that they depend on.
  *
- * It is not necessary to specify all TypeScript files for the `in` argument, only the
- * entry points are needed.  Other TypeScript files that are `import`ed are added as
- * dependencies automatically by the `ninja` rule. This will cause the rule to be
- * rebuilt if any of these files are modified.
+ * Files can be specified by either by listing them in the `in` property or by
+ * specifying them in a `tsconfig.json` file and passing the path to it to the
+ * `tsconfig` property.
  *
- * No `tsconfig.json` file will be used in this rule.  Instead, all TypeScript compiler
- * options must be specified when creating the `ninja` build edge.
+ * It is not necessary to specify all TypeScript files, only the entry points are
+ * needed.  Other TypeScript files (and `tsconfig.json` file if used) that are
+ * `import`ed are added as dependencies automatically by the `ninja` rule. This
+ * will cause the rule to be rebuilt if any of these files are modified.
+ *
+ * No matter how files are specified, `tsc` compilation options can be supplied with
+ * `compilerOptions` and will override any other options in the `tsconfig.json` file.
+ *
+ * WARNING! When adding new entry points to `tsconfig.json` or changing any options
+ * that control the number or location of output files, the ninja file needs to be
+ * regenerated to account for these.
  *
  * For example:
  *
@@ -387,15 +481,16 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
       prefix +
       `(${node} ${getTSCPath(
         ninja,
-      )} --listFiles $args $in${next} ${echoErrCode}) | ${node} ${getParseOutputPath(
+      )} --listFiles $args $in${next} ${echoErrCode}) | ${node} --experimental-import-meta-resolve ${getParseOutputPath(
         ninja,
-      )} $out`,
+      )} $out $tsconfig`,
     description: "Compiling $in",
     depfile: "$out.depfile",
     deps: "gcc",
     in: needs<readonly Input<string>[]>(),
     out: needs<string>(),
     args: needs<string>(),
+    tsconfig: "",
   });
   return ((
     a: (
@@ -422,7 +517,9 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
       } = a;
 
       const args = compilerOptionsToArray(compilerOptions);
-      const commandLine = ts.parseCommandLine(getInputs(a.in).concat(args));
+      const commandLine = ts.parseCommandLine(
+        getInputs(a.in).map(normalizePath).concat(args),
+      );
 
       // We need to set this to something, else we get a debug exception
       // in `getOutputFileNames`
@@ -448,37 +545,36 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
         [validations]: _validations,
         ...rest
       } = a;
-      return getFileNames(ninja, tsConfig).then(
-        ({ files, compilerOptions }) => {
-          const finalCompilerOptions = {
-            ...compilerOptions,
-            ...overrideOptions,
-          };
-          const commandLine = ts.parseCommandLine(
-            files.concat(
-              compilerOptionsToArrayBestEffort(finalCompilerOptions),
-            ),
-          );
+      return showConfig(ninja, tsConfig).then(({ files, compilerOptions }) => {
+        const finalCompilerOptions = {
+          ...compilerOptions,
+          ...overrideOptions,
+        };
+        const commandLine = ts.parseCommandLine(
+          files
+            .map(normalizePath)
+            .concat(compilerOptionsToArrayBestEffort(finalCompilerOptions)),
+        );
 
-          // We need to set this to something, else we get a debug exception
-          // in `getOutputFileNames`
-          commandLine.options.configFilePath = "";
+        // We need to set this to something, else we get a debug exception
+        // in `getOutputFileNames`
+        commandLine.options.configFilePath = "";
 
-          const out = commandLine.fileNames.flatMap((path: string) =>
-            ts.getOutputFileNames(commandLine, path, false),
-          );
-          tsc({
-            ...rest,
-            in: [tsConfig],
-            out: out[0],
-            args: compilerOptionsToString(finalCompilerOptions) + " -p",
-            [implicitOut]: out.slice(1).concat(_implicitOut),
-            [validations]:
-              _validations === undefined ? undefined : () => _validations(out),
-          });
-          return out;
-        },
-      );
+        const out = commandLine.fileNames.flatMap((path: string) =>
+          ts.getOutputFileNames(commandLine, path, false),
+        );
+        tsc({
+          ...rest,
+          in: [tsConfig],
+          out: out[0],
+          args: compilerOptionsToString(finalCompilerOptions) + " -p",
+          tsconfig: `--tsconfig ${tsConfig}`,
+          [implicitOut]: out.slice(1).concat(_implicitOut),
+          [validations]:
+            _validations === undefined ? undefined : () => _validations(out),
+        });
+        return out;
+      });
     }
   }) as TSCRuleFn;
 }
