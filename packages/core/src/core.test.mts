@@ -15,6 +15,21 @@ import {
   validations,
   implicitOut,
 } from "./core.js";
+import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
+
+test("import.meta.resolve", () => {
+  assert.equal(
+    fileURLToPath(import.meta.resolve("./core.js")),
+    resolve("./packages/core/dist/core.js"),
+  );
+  assert.equal(
+    fileURLToPath(
+      import.meta.resolve("./dist/core.js", join(import.meta.url, "..")),
+    ),
+    resolve("./packages/core/dist/core.js"),
+  );
+});
 
 test("console", () => {
   assert.equal(console, "console");

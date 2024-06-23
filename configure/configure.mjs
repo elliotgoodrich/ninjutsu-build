@@ -361,6 +361,7 @@ for (const cwd of workspaceJSON.workspaces) {
         return test({
           in: js,
           out: join("$builddir", cwd, `${js}.result.txt`),
+          nodeArgs: "--experimental-import-meta-resolve",
           [orderOnlyDeps]: packageRunnable,
         });
       });
