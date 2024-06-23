@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/tsc",
-  "version": "0.12.5",
+  "version": "0.12.6",
   "description": "Create a ninjutsu-build rule for running the TypeScript compiler (tsc)",
   "author": "Elliot Goodrich",
   "scripts": {

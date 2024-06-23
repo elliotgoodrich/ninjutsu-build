@@ -1,8 +1,9 @@
 import { createInterface } from "node:readline";
-import { isAbsolute, relative } from "node:path";
-import { realpath } from "node:fs/promises";
-import { writeFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
+import { realpath, readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import ts from "typescript";
 
 const cwd = process.cwd();
 
@@ -35,19 +36,66 @@ async function convertToPath(line: string): Promise<string> {
     .replaceAll("$", "$$$$");
 }
 
+// Get a list of all `tsconfig.json` files (relative to `parentAbsolutePath`)
+// containing `tsconfigPath` and all the `.json` files it extends.
+async function getTSConfigDynDeps(
+  tsconfigAbsPath: string | undefined,
+  parentAbsolutePath: string,
+): Promise<string[]> {
+  if (tsconfigAbsPath === undefined) {
+    return [];
+  }
+
+  const contents = await readFile(tsconfigAbsPath);
+  const { config, error } = ts.parseConfigFileTextToJson(
+    tsconfigAbsPath,
+    contents.toString(),
+  );
+  if (config === undefined) {
+    if (error !== undefined) {
+      console.log(error.messageText);
+    } else {
+      console.log(`Unknown error while parsing ${tsconfigAbsPath}`);
+    }
+    process.exit(1);
+  }
+  const obj = config as { extends?: string };
+  if (obj.extends === undefined) {
+    return [await convertToPath(tsconfigAbsPath)];
+  }
+
+  const base = fileURLToPath(
+    import.meta.resolve(`${obj.extends}.json`, pathToFileURL(tsconfigAbsPath)),
+  );
+  return (
+    await Promise.all([
+      convertToPath(tsconfigAbsPath),
+      getTSConfigDynDeps(base, resolve(parentAbsolutePath, tsconfigAbsPath)),
+    ])
+  ).flat();
+}
+
 async function main() {
   const {
     positionals: [out],
-    values: { touch },
+    values: { touch, tsconfig },
   } = parseArgs({
     allowPositionals: true,
-    options: { touch: { type: "boolean" } },
+    options: {
+      touch: { type: "boolean" },
+      tsconfig: { type: "string" },
+    },
   });
 
+  // Build up dependencies on any tsconfig.json files and
+  // any that it extends.
+  const tsconfigDyndeps = getTSConfigDynDeps(
+    tsconfig === undefined ? undefined : resolve(tsconfig),
+    process.cwd(),
+  );
+
   const lines: string[] = [];
-  for await (const line of createInterface({
-    input: process.stdin,
-  })) {
+  for await (const line of createInterface({ input: process.stdin })) {
     lines.push(line);
   }
 
@@ -58,11 +106,18 @@ async function main() {
       lines.filter((l) => l !== "").map(convertToPath),
     );
 
+    const tsconfigs = await tsconfigDyndeps;
+
     // The ".depfile" suffix must match what's used in `node.ts`
-    writeFileSync(out + ".depfile", out + ": " + paths.join(" "));
+    const depfile = writeFile(
+      out + ".depfile",
+      out + ": " + paths.concat(tsconfigs).join(" "),
+    );
     if (touch) {
-      writeFileSync(out, "");
+      await writeFile(out, "");
     }
+
+    await depfile;
   } else {
     // Drop the `--listFiles` content printed at the end until we get to the
     // error messages.  Assume that all the paths end in `ts` (e.g. `.d.ts`
