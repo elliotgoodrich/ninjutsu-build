@@ -213,9 +213,14 @@ describe("tsc", (suiteCtx) => {
 
   test("tsconfig", async (testCtx) => {
     const dir = getTestDir(suiteCtx, testCtx);
+
+    // Put everything in a src directory to check that we add back the
+    // directory in which the tsconfig.json is in
+    const src = join(dir, "src");
+    mkdirSync(src);
     const script = "script.mts";
     writeFileSync(
-      join(dir, script),
+      join(src, script),
       "function greet(msg): void { console.log(msg); }\ngreet('Hello World!');\n",
     );
 
@@ -226,7 +231,7 @@ describe("tsc", (suiteCtx) => {
         JSON.stringify(
           {
             compilerOptions: {
-              outDir: "myOutput",
+              noImplicitAny: false,
             },
           },
           undefined,
@@ -234,16 +239,16 @@ describe("tsc", (suiteCtx) => {
         ),
     );
 
-    const tsConfig = join(dir, "tsconfig.json");
+    const tsConfig = join(src, "tsconfig.json");
     writeFileSync(
       tsConfig,
       "// tsconfig is a jsonc file and allows comments\n" +
         JSON.stringify(
           {
             files: [script],
-            extends: ["./base"],
+            extends: ["../base"],
             compilerOptions: {
-              noImplicitAny: false,
+              outDir: "myOutput",
               skipLibCheck: true,
             },
           },
@@ -257,28 +262,31 @@ describe("tsc", (suiteCtx) => {
     const typecheck = makeTypeCheckRule(ninja);
 
     const out = await tsc({
-      tsConfig: "tsconfig.json",
+      tsConfig: { file: "src/tsconfig.json" },
       compilerOptions: { declaration: true },
     });
-    assert.deepEqual(out, ["myOutput/script.mjs", "myOutput/script.d.mts"]);
+    assert.deepEqual(out, [
+      "src/myOutput/script.mjs",
+      "src/myOutput/script.d.mts",
+    ]);
 
     const typechecked = await typecheck({
-      tsConfig: "tsconfig.json",
+      tsConfig: { file: "src/tsconfig.json" },
       out: "typechecked.stamp",
     });
     assert.deepEqual(typechecked, [
-      { file: "script.mts", [validations]: "typechecked.stamp" },
+      { file: "src/script.mts", [validations]: "typechecked.stamp" },
     ]);
 
     const failed = await typecheck({
-      tsConfig: "tsconfig.json",
+      tsConfig: "src/tsconfig.json",
       out: "failed.stamp",
       compilerOptions: {
         noImplicitAny: true,
       },
     });
     assert.deepEqual(failed, [
-      { file: "script.mts", [validations]: "failed.stamp" },
+      { file: "src/script.mts", [validations]: "failed.stamp" },
     ]);
 
     const err = ninja.phony({ out: "err", in: failed[0][validations] });
@@ -287,8 +295,8 @@ describe("tsc", (suiteCtx) => {
 
     {
       const stdout = callNinja(dir);
-      assert.match(stdout, /Compiling tsconfig.json/);
-      assert.match(stdout, /Typechecking tsconfig.json/);
+      assert.match(stdout, /Compiling src\/tsconfig.json/);
+      assert.match(stdout, /Typechecking src\/tsconfig.json/);
     }
 
     for (const output of out) {
@@ -305,12 +313,12 @@ describe("tsc", (suiteCtx) => {
 
     const deps = getDeps(dir);
     assert.notDeepEqual(
-      deps["myOutput/script.mjs"].indexOf("tsconfig.json"),
+      deps["src/myOutput/script.mjs"].indexOf("src/tsconfig.json"),
       -1,
       "Missing tsconfig.json dependency",
     );
     assert.notDeepEqual(
-      deps["myOutput/script.mjs"].indexOf("base.json"),
+      deps["src/myOutput/script.mjs"].indexOf("base.json"),
       "Missing base.json dependency",
     );
 
