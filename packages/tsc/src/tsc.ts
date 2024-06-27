@@ -16,7 +16,8 @@ import type {
 } from "typescript";
 import ts from "typescript";
 import { platform } from "os";
-import { join, relative, resolve } from "node:path";
+import { relative, resolve } from "node:path";
+import { dirname, join } from "node:path/posix";
 import { readFile as readFileCb } from "node:fs";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
@@ -357,11 +358,12 @@ export function makeTypeCheckRule(
         in: [a.tsConfig],
         out: a.out,
         args: compilerOptionsToString(a.compilerOptions ?? {}) + " -p",
-        tsconfig: `--tsconfig ${a.tsConfig}`,
+        tsconfig: `--tsconfig ${getInput(a.tsConfig)}`,
       });
+      const directory = dirname(getInput(a.tsConfig));
       return getFileNames(ninja, a.tsConfig).then((files) =>
         files.map((file) => ({
-          file,
+          file: join(directory, file),
           [validations]: typechecked,
         })),
       );
@@ -546,29 +548,31 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
         ...rest
       } = a;
       return showConfig(ninja, tsConfig).then(({ files, compilerOptions }) => {
-        const finalCompilerOptions = {
-          ...compilerOptions,
-          ...overrideOptions,
-        };
         const commandLine = ts.parseCommandLine(
-          files
-            .map(normalizePath)
-            .concat(compilerOptionsToArrayBestEffort(finalCompilerOptions)),
+          files.map(normalizePath).concat(
+            compilerOptionsToArrayBestEffort({
+              ...compilerOptions,
+              ...overrideOptions,
+            }),
+          ),
         );
 
         // We need to set this to something, else we get a debug exception
         // in `getOutputFileNames`
         commandLine.options.configFilePath = "";
 
-        const out = commandLine.fileNames.flatMap((path: string) =>
-          ts.getOutputFileNames(commandLine, path, false),
-        );
+        const directory = dirname(getInput(tsConfig));
+        const out = commandLine.fileNames
+          .flatMap((path: string) =>
+            ts.getOutputFileNames(commandLine, path, false),
+          )
+          .map((f) => join(directory, f));
         tsc({
           ...rest,
           in: [tsConfig],
           out: out[0],
-          args: compilerOptionsToString(finalCompilerOptions) + " -p",
-          tsconfig: `--tsconfig ${tsConfig}`,
+          args: compilerOptionsToString(overrideOptions) + " -p",
+          tsconfig: `--tsconfig ${getInput(tsConfig)}`,
           [implicitOut]: out.slice(1).concat(_implicitOut),
           [validations]:
             _validations === undefined ? undefined : () => _validations(out),
