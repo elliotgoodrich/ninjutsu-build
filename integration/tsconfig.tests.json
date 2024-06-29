@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig",
+  "files": [
+    "src/biome.test.mts",
+    "src/esbuild.test.mts",
+    "src/node.test.mts",
+    "src/tsc.test.mts"
+  ]
+}
