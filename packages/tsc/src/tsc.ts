@@ -354,11 +354,12 @@ export function makeTypeCheckRule(
         [validations]: typechecked,
       }));
     } else {
+      const { tsConfig, compilerOptions = {}, ...rest } = a;
       const typechecked = typecheck({
-        in: [a.tsConfig],
-        out: a.out,
-        args: compilerOptionsToString(a.compilerOptions ?? {}) + " -p",
-        tsconfig: `--tsconfig ${getInput(a.tsConfig)}`,
+        in: [tsConfig],
+        args: compilerOptionsToString(compilerOptions) + " -p",
+        tsconfig: `--tsconfig ${getInput(tsConfig)}`,
+        ...rest,
       });
       const directory = dirname(getInput(a.tsConfig));
       return getFileNames(ninja, a.tsConfig).then((files) =>
