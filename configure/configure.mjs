@@ -17,9 +17,8 @@ import {
   relative as relativeNative,
   sep,
 } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { globSync } from "glob";
 import { platform } from "os";
 import isCi from "is-ci";
 
@@ -160,44 +159,27 @@ function addBiomeConfig(rule) {
   };
 }
 
-// Tell TypeScript to look for `@types/node` package installed in the
-// workspace `node_modules` directory, otherwise it'll fail to find it
-const typeRoots = [
-  relativeNative(
-    process.cwd(),
-    fileURLToPath(import.meta.resolve("@types/node/package.json")),
-  )
-    .split(sep)
-    .slice(0, -2)
-    .join("/"),
-];
+async function loadSourcesFromTSConfig(tsConfig) {
+  tsConfig = getInput(tsConfig);
+  try {
+    const buffer = readFileSync(tsConfig);
+    let tsConfigObj = JSON.parse(buffer.toString());
+    if (Array.isArray(tsConfigObj.include) && tsConfigObj.include.length > 0) {
+      const { stdout } = await execFile(node, [
+        getTSCPath(ninja),
+        "--showConfig",
+        "--project",
+        tsConfigPath,
+      ]);
+      tsConfigObj = JSON.parse(stdout);
+    }
 
-const compilerOptions = {
-  target: "ES2018",
-  lib: ["ES2021"],
-  module: "nodenext",
-  moduleResolution: "nodenext",
-  typeRoots,
-  declaration: true,
-  esModuleInterop: true,
-  forceConsistentCasingInFileNames: true,
-  strict: true,
-  noImplicitAny: true,
-  strictNullChecks: true,
-  strictFunctionTypes: true,
-  strictBindCallApply: true,
-  strictPropertyInitialization: true,
-  noImplicitThis: true,
-  useUnknownInCatchVariables: true,
-  alwaysStrict: true,
-  noUnusedLocals: true,
-  noUnusedParameters: true,
-  noImplicitReturns: true,
-  noFallthroughCasesInSwitch: true,
-  skipDefaultLibCheck: true,
-  skipLibCheck: true,
-  isolatedModules: true,
-};
+    const directory = dirname(tsConfig);
+    return tsConfigObj.files.map((f) => join(directory, f));
+  } catch (e) {
+    throw new Error(`${tsConfig}: ${e}`);
+  }
+}
 
 const ninja = new NinjaBuilder({
   builddir: ".builddir",
@@ -263,6 +245,8 @@ const transpile = inject(makeSWCRule(ninja), {
 
 format({ in: "configure/configure.mjs" });
 
+const baseConfig = format({ in: "tsconfig.json" });
+
 const scope = "@ninjutsu-build/";
 for (const cwd of workspaceJSON.workspaces) {
   const localPKGJSON = JSON.parse(
@@ -295,12 +279,8 @@ for (const cwd of workspaceJSON.workspaces) {
   const packageJSON = format({ in: join(cwd, "package.json") });
 
   // Grab all TypeScript source files and format them
-  const sources = globSync(join(cwd, "src", "*.{cts,mts,ts}"), {
-    posix: true,
-    ignore: {
-      ignored: (f) => basename(f.name, extname(f.name)).endsWith(".test"),
-    },
-  }).map(formatAndLint);
+  const tsconfig = format({ in: join(cwd, "tsconfig.json") });
+  const sources = (await loadSourcesFromTSConfig(tsconfig)).map(formatAndLint);
 
   const outDir = join(cwd, "dist");
 
@@ -322,14 +302,14 @@ for (const cwd of workspaceJSON.workspaces) {
   });
 
   // Create the TypeScript type declaration files and do typechecking
-  const typeDeclarations = tsc({
-    in: sources,
+  const typeDeclarations = await tsc({
+    tsConfig: tsconfig,
     compilerOptions: {
-      ...compilerOptions,
+      declaration: true,
       emitDeclarationOnly: true,
       outDir,
     },
-    [orderOnlyDeps]: dependenciesTyped,
+    [orderOnlyDeps]: [...dependenciesTyped, baseConfig],
   });
 
   // Create a phony target for when the package has its types generated and
@@ -340,33 +320,37 @@ for (const cwd of workspaceJSON.workspaces) {
     in: [packageJSON, ...typeDeclarations].map(getOrderOnlyDeps),
   });
 
-  // Grab all TypeScript tests files and format them
-  const tests = globSync(join(cwd, "src", "*.test.mts"), {
-    posix: true,
-  }).map(formatAndLint);
-
   // Type check all the tests
-  const testTargets = (() => {
-    if (tests.length !== 0) {
-      return typecheck({
-        in: tests,
-        out: join(cwd, "dist", "typechecked.stamp"),
-        compilerOptions,
-        [orderOnlyDeps]: packageHasTypes,
-      }).map((t) => {
-        const js = transpile({
-          in: t,
-          outDir,
-        });
-        return test({
-          in: js,
-          out: join("$builddir", cwd, `${js}.result.txt`),
-          [orderOnlyDeps]: packageRunnable,
-        });
-      });
-    } else {
+  const testTargets = await (async () => {
+    if (!existsSync(join(cwd, "tsconfig.tests.json"))) {
       return [];
     }
+    const testTSConfig = format({ in: join(cwd, "tsconfig.tests.json") });
+    const tests = await loadSourcesFromTSConfig(testTSConfig);
+    if (tests.length === 0) {
+      return [];
+    }
+
+    const testsFormatted = tests.map(formatAndLint);
+
+    return (
+      await typecheck({
+        tsConfig: testTSConfig,
+        out: join(cwd, "dist", "typechecked.stamp"),
+        [orderOnlyDeps]: [packageHasTypes, baseConfig, ...testsFormatted],
+      })
+    ).map((t) => {
+      const js = transpile({
+        in: t,
+        outDir,
+        [orderOnlyDeps]: testsFormatted,
+      });
+      return test({
+        in: js,
+        out: join("$builddir", cwd, `${js}.result.txt`),
+        [orderOnlyDeps]: packageRunnable,
+      });
+    });
   })();
 
   const createTar = (() => {

@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig",
+  "files": [
+    "src/depfile.cts",
+    "src/hookImport.mts",
+    "src/hookRequire.cts",
+    "src/node.ts",
+    "src/runtime.cts",
+    "src/testReporter.mts"
+  ]
+}
