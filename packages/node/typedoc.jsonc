@@ -1,0 +1,5 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "name": "node",
+    "entryPoints": ["./src/node.ts", "./src/runtime.cts"],
+}

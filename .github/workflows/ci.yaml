@@ -26,3 +26,4 @@ jobs:
     - run: cd configure && npm ci
     - run: npm run configure
     - run: ninja -k 0
+    - run: npm run docs

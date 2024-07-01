@@ -1,0 +1,15 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "@ninjutsu-build",
+  "out": "../docs",
+  "entryPoints": [
+    "../guides",
+    "../packages/biome",
+    "../packages/bun",
+    "../packages/core",
+    "../packages/esbuild",
+    "../packages/node",
+    "../packages/tsc"
+  ],
+  "entryPointStrategy": "packages"
+}
