@@ -247,6 +247,8 @@ format({ in: "configure/configure.mjs" });
 
 const baseConfig = format({ in: "tsconfig.json" });
 
+const docsDependencies = [];
+
 const scope = "@ninjutsu-build/";
 for (const cwd of workspaceJSON.workspaces) {
   const localPKGJSON = JSON.parse(
@@ -320,6 +322,8 @@ for (const cwd of workspaceJSON.workspaces) {
     in: [packageJSON, ...typeDeclarations].map(getOrderOnlyDeps),
   });
 
+  docsDependencies.push(packageHasTypes);
+
   // Type check all the tests
   const testTargets = await (async () => {
     if (!existsSync(join(cwd, "tsconfig.tests.json"))) {
@@ -392,5 +396,7 @@ for (const cwd of workspaceJSON.workspaces) {
     in: [packageHasTypes, packageRunnable, ...createTar, ...testTargets],
   });
 }
+
+phony({ out: "prep-for-docs", in: docsDependencies });
 
 writeFileSync("build.ninja", ninja.output);
