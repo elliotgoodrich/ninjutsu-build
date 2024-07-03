@@ -24,7 +24,6 @@ jobs:
     - uses: seanmiddleditch/gha-setup-ninja@master
     - run: cd configure && npm ci
     - run: npm run configure
-    - run: ninja 
     - run: ninja -k 0 prep-for-docs
     - run: npm run docs
     - uses: actions/upload-pages-artifact@v3
