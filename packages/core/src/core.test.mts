@@ -167,12 +167,19 @@ test("phony rule", () => {
   const out4: "none" = phony({ out: "none", in: [] });
   assert.equal(out4, "none");
 
+  const out5: "buildOrder" = phony({
+    out: "buildOrder",
+    in: ["in1", { file: "ignored", [orderOnlyDeps]: "in2" }],
+  });
+  assert.equal(out5, "buildOrder");
+
   assert.equal(
     ninja.output,
     `build alias: phony file.txt
 build my$:$:$ alia$$ !: phony file$$ .txt
 build all: phony in1 in2
 build none: phony
+build buildOrder: phony in1 in2
 `,
   );
 });
