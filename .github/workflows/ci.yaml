@@ -39,6 +39,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: latest
+        cache: 'npm'
+    - uses: seanmiddleditch/gha-setup-ninja@master
+    - run: cd configure && npm ci
+    - run: npm run configure
+    - run: ninja -k 0 prep-for-docs
+    - run: npm run docs
     - uses: actions/upload-pages-artifact@v3
       with:
         path: "./docs"
