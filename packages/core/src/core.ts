@@ -483,6 +483,11 @@ export class NinjaBuilder {
    * the `out` property of the first argument.  The `in` and `out` properties will be escaped
    * using {@link escapePath}.
    *
+   * If `in` has an `orderOnlyDep` property then that property value will be used instead of
+   * the `file` property.  Otherwise if `in` is an array, all elements inside that are objects
+   * containing `orderOnlyDeps` will have that property value taken instead of the `file`
+   * property.
+   *
    * See the ninja build manual on
    * {@link https://ninja-build.org/manual.html#_the_literal_phony_literal_rule | the phony rule}
    * for more information.
@@ -509,17 +514,17 @@ export class NinjaBuilder {
    */
   get phony(): <O extends string>(args: {
     out: O;
-    in: string | readonly string[];
+    in: Input<string> | readonly Input<string>[];
   }) => O {
     return <O extends string>(args: {
       out: O;
-      in: string | readonly string[];
+      in: Input<string> | readonly Input<string>[];
     }): O => {
       this.output +=
         "build " +
         escapePath(args.out) +
         ": phony" +
-        concatPaths(" ", args.in) +
+        concatPaths(" ", getOrderOnlyDeps(args.in)) +
         "\n";
       return args.out;
     };
