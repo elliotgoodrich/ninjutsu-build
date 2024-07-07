@@ -59,6 +59,7 @@ function makeNpmCiRule(ninja) {
   const ci = ninja.rule("npmci", {
     command: prefix + "npm ci --prefix $cwd --silent",
     description: "npm ci ($cwd)",
+    generator: 1,
   });
   return (a) => {
     const cwd = dirname(getInput(a.in));
@@ -74,6 +75,7 @@ function makeNpmCiWorkspaces(ninja) {
   const ci = ninja.rule("npmciworkspaces", {
     command: prefix + "npm ci --workspaces --silent",
     description: "npm ci --workspaces",
+    generator: 1,
   });
   return (a) =>
     ci({
