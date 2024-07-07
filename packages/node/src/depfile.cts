@@ -1,23 +1,30 @@
 import { openSync, writeFileSync } from "node:fs";
 import { resolve, relative, isAbsolute } from "node:path";
 
-let fd: number;
-let cwd: string;
-
-/**
- * Open the corresponding depfile for the specified `out` file.  Note that this
- * must be called before any calls to `addDependency`.
- * @private
- */
-export function open(out: string): void {
-  cwd = resolve();
-  fd = openSync(out + ".depfile", "w");
-  writeFileSync(fd, out + ":");
+declare global {
+  // biome-ignore lint/style/noVar: `let` require to type `global` in TypeScript
+  var fd: number;
+  // biome-ignore lint/style/noVar: `let` require to type `global` in TypeScript
+  var cwd: string | undefined;
 }
 
 /**
- * Add to ninja's dynamic dependencies the specified `path` for the currently
- * running script.
+ * Open the corresponding depfile for the specified `out` file.  Note that this
+ * must be called before any calls to `addDependency` in order for that function
+ * to have any effect.
+ * @private
+ */
+export function open(out: string): void {
+  global.cwd = resolve();
+  global.fd = openSync(out + ".depfile", "w");
+  writeFileSync(global.fd, out + ":");
+}
+
+/**
+ * If the currently running script has been run inside `node` with the
+ * appropriate bootstrap scripts injected by `@ninjutsu-build/tsc`, then
+ * add the specified `path` to ninja's dynamic dependencies the this script.
+ * Otherwise do nothing.
  *
  * For example, if we want to execute a "script.mjs" file with
  * ninja we can write:
@@ -66,11 +73,14 @@ export function open(out: string): void {
  * ```
  */
 export function addDependency(path: string): void {
-  const relPath = relative(cwd, path);
-  const dependency = (
-    relPath && !relPath.startsWith("..") && !isAbsolute(relPath)
-      ? relPath
-      : path
-  ).replaceAll("\\", "/");
-  writeFileSync(fd, " " + dependency);
+  const { cwd, fd } = global;
+  if (cwd !== undefined) {
+    const relPath = relative(cwd, path);
+    const dependency = (
+      relPath && !relPath.startsWith("..") && !isAbsolute(relPath)
+        ? relPath
+        : path
+    ).replaceAll("\\", "/");
+    writeFileSync(fd, " " + dependency);
+  }
 }
