@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { isBuiltin } from "node:module";
-import { type MessagePort } from "node:worker_threads";
+import type { MessagePort } from "node:worker_threads";
 
 let port: MessagePort;
 

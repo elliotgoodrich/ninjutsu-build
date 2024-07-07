@@ -5,7 +5,7 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 80,
-    "lineEnding": "crlf",
+    "lineEnding": "lf",
     "ignore": []
   },
   "linter": {

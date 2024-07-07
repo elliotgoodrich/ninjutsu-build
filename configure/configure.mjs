@@ -15,7 +15,6 @@ import { basename, dirname, extname, join, relative } from "node:path/posix";
 import {
   resolve as resolveNative,
   relative as relativeNative,
-  sep,
 } from "node:path";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -24,19 +23,6 @@ import isCi from "is-ci";
 
 if (isCi) {
   console.log("Running in CI mode");
-}
-
-// Copy from `@ninjutsu-build/core` for the moment until we widen the
-// contract of `phony`
-function getOrderOnlyDeps(input) {
-  if (typeof input !== "object") {
-    return input;
-  }
-
-  if (Array.isArray(input)) {
-    return input.map(getOrderOnlyDeps);
-  }
-  return input[orderOnlyDeps] ?? input.file;
 }
 
 const extLookup = {
@@ -138,28 +124,7 @@ function formatAndLint(file) {
   return lint({ in: formatted });
 }
 
-// Return a function that will append `args[orderOnlyDeps]` with the build arguments
-// before passing to `rule`.
-function inject(rule, args) {
-  return (a) => {
-    const { [orderOnlyDeps]: _orderOnlyDeps = [], ...rest } = a;
-    const deps =
-      typeof _orderOnlyDeps === "string" ? [_orderOnlyDeps] : _orderOnlyDeps;
-    return rule({
-      ...rest,
-      [orderOnlyDeps]: deps.concat(args[orderOnlyDeps]),
-    });
-  };
-}
-
-function addBiomeConfig(rule) {
-  return (a) => {
-    return rule({
-      ...a,
-      configPath: join("configure", "biome.json"),
-    });
-  };
-}
+const biomeConfig = join("configure", "biome.json");
 
 async function loadSourcesFromTSConfig(tsConfig) {
   tsConfig = getInput(tsConfig);
@@ -211,37 +176,34 @@ let checkFormatted;
 const toolsInstalled = ci({
   in: "configure/package.json",
   [validations]: (out) => {
-    checkFormatted = addBiomeConfig(
-      inject(makeCheckFormattedRule(ninja), {
-        [orderOnlyDeps]: out,
-      }),
-    );
+    checkFormatted = makeCheckFormattedRule(ninja, {
+      configPath: biomeConfig,
+      [orderOnlyDeps]: out,
+    });
     // Add a validation that `package.json` is formatted correctly.
     // If we formatted after running `npmci` it would cause us to run it again
     return checkFormatted({ in: "configure/package.json" })[validations];
   },
 });
 
-const tsc = inject(makeTSCRule(ninja), { [orderOnlyDeps]: toolsInstalled });
-const typecheck = inject(makeTypeCheckRule(ninja), {
+const tsc = makeTSCRule(ninja, { [orderOnlyDeps]: toolsInstalled });
+const typecheck = makeTypeCheckRule(ninja, {
   [orderOnlyDeps]: toolsInstalled,
 });
 const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
 const format = isCi
   ? checkFormatted
-  : addBiomeConfig(
-      inject(makeFormatRule(ninja), {
-        [orderOnlyDeps]: toolsInstalled,
-      }),
-    );
+  : makeFormatRule(ninja, {
+      configPath: biomeConfig,
+      [orderOnlyDeps]: toolsInstalled,
+    });
 const copy = makeCopyRule(ninja);
-const lint = addBiomeConfig(
-  inject(makeLintRule(ninja), {
-    [orderOnlyDeps]: toolsInstalled,
-  }),
-);
-const transpile = inject(makeSWCRule(ninja), {
+const lint = makeLintRule(ninja, {
+  configPath: biomeConfig,
+  [orderOnlyDeps]: toolsInstalled,
+});
+const transpile = makeSWCRule(ninja, {
   [orderOnlyDeps]: toolsInstalled,
 });
 
@@ -300,9 +262,7 @@ for (const cwd of workspaceJSON.workspaces) {
   // and it is ready to be executed.
   const packageRunnable = phony({
     out: `${localPKGJSON.name}/runnable`,
-    in: [packageJSON, ...javascript, ...dependenciesRunnable].map(
-      getOrderOnlyDeps,
-    ),
+    in: [packageJSON, ...javascript, ...dependenciesRunnable],
   });
 
   // Create the TypeScript type declaration files and do typechecking
@@ -321,7 +281,7 @@ for (const cwd of workspaceJSON.workspaces) {
   // check their own code.
   const packageHasTypes = phony({
     out: `${localPKGJSON.name}/typed`,
-    in: [packageJSON, ...typeDeclarations].map(getOrderOnlyDeps),
+    in: [packageJSON, ...typeDeclarations],
   });
 
   docsDependencies.push(packageHasTypes);

@@ -7,7 +7,7 @@ import {
   validations,
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
-import { platform } from "os";
+import { platform } from "node:os";
 import { relative, resolve } from "node:path";
 import { isAbsolute } from "node:path/posix";
 

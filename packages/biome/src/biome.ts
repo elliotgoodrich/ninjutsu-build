@@ -9,7 +9,7 @@ import {
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
 import { join, relative, resolve } from "node:path";
-import { platform, arch } from "os";
+import { platform, arch } from "node:os";
 
 const exe = platform() === "win32" ? ".exe" : "";
 const prefix = platform() === "win32" ? "cmd /c " : "";
