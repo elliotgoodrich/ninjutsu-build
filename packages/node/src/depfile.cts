@@ -2,9 +2,7 @@ import { openSync, writeFileSync } from "node:fs";
 import { resolve, relative, isAbsolute } from "node:path";
 
 declare global {
-  // biome-ignore lint/style/noVar: `let` require to type `global` in TypeScript
   var fd: number;
-  // biome-ignore lint/style/noVar: `let` require to type `global` in TypeScript
   var cwd: string | undefined;
 }
 

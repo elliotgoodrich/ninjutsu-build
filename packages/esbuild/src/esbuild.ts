@@ -7,7 +7,7 @@ import {
   validations,
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
-import { type BuildOptions } from "esbuild";
+import type { BuildOptions } from "esbuild";
 import { join, relative, resolve } from "node:path";
 
 function serializeBuildOptions(args: Omit<BuildOptions, "outfile">): string {

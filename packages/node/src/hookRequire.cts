@@ -1,4 +1,4 @@
-const Module: NodeRequire = require("module");
+const Module: NodeRequire = require("node:module");
 import { addDependency } from "./depfile.cjs";
 
 const r: RequireResolve = Module.prototype.require;

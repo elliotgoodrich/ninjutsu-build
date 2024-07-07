@@ -15,7 +15,7 @@ import type {
   CompilerOptionsValue,
 } from "typescript";
 import ts from "typescript";
-import { platform } from "os";
+import { platform } from "node:os";
 import { relative, resolve } from "node:path";
 import { dirname, join } from "node:path/posix";
 import { readFile as readFileCb } from "node:fs";
