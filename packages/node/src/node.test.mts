@@ -8,7 +8,7 @@ test("makeNodeRule", () => {
   const node = makeNodeRule(ninja);
   const out: "out.txt" = node({ out: "out.txt", in: "in.js", args: "" });
   assert.equal(out, "out.txt");
-  const myNode = makeNodeRule(ninja, "myNode");
+  const myNode = makeNodeRule(ninja, { name: "myNode" });
   const out2: "out2.txt" = myNode({
     out: "out2.txt",
     in: "in.js",
@@ -24,7 +24,7 @@ test("makeNodeTestRule", () => {
   const test = makeNodeTestRule(ninja);
   const out: "out.txt" = test({ out: "out.txt", in: "in.js" });
   assert.equal(out, "out.txt");
-  const myNode = makeNodeTestRule(ninja, "myTest");
+  const myNode = makeNodeTestRule(ninja, { name: "myTest" });
   const out2: "out2.txt" = myNode({
     out: "out2.txt",
     in: "in.js",

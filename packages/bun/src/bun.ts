@@ -10,8 +10,12 @@ import {
 import { existsSync } from "node:fs";
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `bun build --no-bundle` on the input file and writing contents to the output file.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run `bun build --no-bundle` on the input file and writing
+ * contents to the output file.
+ *
+ * Any `implicitDeps` or `orderOnlyDeps` passed in `options` will be added to all build
+ * edges generated with the returned function.
  *
  * The returned function takes an optional `args` property, to pass any additional options
  * to the CLI.
@@ -45,7 +49,11 @@ import { existsSync } from "node:fs";
  */
 export function makeTranspileRule(
   ninja: NinjaBuilder,
-  name = "buntranspile",
+  options: {
+    name?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <O extends string>(args: {
   in: Input<string>;
   out: O;
@@ -55,6 +63,7 @@ export function makeTranspileRule(
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
+  const { name = "buntranspile", ...rest } = options;
   return ninja.rule(name, {
     command: "bun build $in --outfile $out --no-bundle $args",
     description: "Transpiling $in",
@@ -62,5 +71,6 @@ export function makeTranspileRule(
     out: needs<string>(),
     args: "",
     [implicitDeps]: existsSync("bunfig.toml") ? "bunfig.toml" : undefined,
+    ...rest,
   });
 }

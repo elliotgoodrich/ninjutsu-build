@@ -15,7 +15,7 @@ import {
 
 test("makeLintRule", () => {
   const ninja = new NinjaBuilder();
-  const lint = makeLintRule(ninja);
+  const lint = makeLintRule(ninja, { name: "lint2" });
   const out: {
     file: "foo.js";
     [validations]: "$builddir/.ninjutsu-build/biome/lint/foo.js";
@@ -70,7 +70,10 @@ test("makeFormatRule", () => {
 
 test("makeFormatToRule", () => {
   const ninja = new NinjaBuilder();
-  const format = makeFormatToRule(ninja);
+  const format = makeFormatToRule(ninja, {
+    configPath: "biome.jsonc",
+    [implicitDeps]: "dummy",
+  });
   const out: "nice.js" = format({
     in: "ugly.js",
     out: "nice.js",

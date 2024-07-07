@@ -9,7 +9,6 @@ import {
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
 import { join, relative, resolve } from "node:path";
-import { dirname } from "node:path/posix";
 import { platform, arch } from "os";
 
 const exe = platform() === "win32" ? ".exe" : "";
@@ -28,13 +27,17 @@ function getBiomePath(ninja: NinjaBuilder): string {
 }
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `biome format` on the input file, overwriting its contents. The returned function
- * returns `{ file: string, [orderOnlyDeps]: string }` where the `file` property is the
- * `in` property passed as an argument, and `[orderOnlyDeps]` is an unspecified path to
- * an empty file that is updated after the formatting has completed.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run `biome format` on the input file, overwriting its
+ * contents. The returned function returns `{ file: string, [orderOnlyDeps]: string }`
+ * where the `file` property is the `in` property passed as an argument, and
+ * `[orderOnlyDeps]` is an unspecified path to an empty file that is updated after the
+ * formatting has completed.
  *
- * The returned function takes a `configPath` property, which is the path to the
+ * Any `configPath`, `implicitDeps` or `orderOnlyDeps` passed in `options` will be added
+ * to all build edges generated with the returned function.
+ *
+ * The returned function takes an optional `configPath` property, which is the path to the
  * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
  * `args` property exists to pass in any additional options to the CLI.
  *
@@ -55,7 +58,7 @@ function getBiomePath(ninja: NinjaBuilder): string {
  * import { globSync } from "glob";
  *
  * const ninja = new NinjaBuilder();
- * const format = makeFormatRule(ninja);
+ * const format = makeFormatRule(ninja, { configPath: "src/biome.json" });
  * const test = makeNodeTestRule(ninja);
  *
  * globSync("tests/*.test.js", { posix: true }).forEach((test) => {
@@ -75,10 +78,15 @@ function getBiomePath(ninja: NinjaBuilder): string {
  */
 export function makeFormatRule(
   ninja: NinjaBuilder,
-  name = "format",
+  options: {
+    name?: string;
+    configPath?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <I extends string>(args: {
   in: Input<I>;
-  configPath: string;
+  configPath?: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -91,20 +99,18 @@ export function makeFormatRule(
   file: I;
   [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${I}`;
 } {
+  const { name = "format", configPath: defaultConfigPath, ...rest } = options;
   const format = ninja.rule(name, {
-    command:
-      prefix +
-      getBiomePath(ninja) +
-      " format $args --config-path $configPath --write $in > $out",
+    command: prefix + getBiomePath(ninja) + " format $args --write $in > $out",
     description: "Formatting $in",
     in: needs<Input<string>>(),
     out: needs<string>(),
-    configPath: needs<string>(),
-    args: "",
+    args: needs<string>(),
+    ...rest,
   });
   return <I extends string>(a: {
     in: Input<I>;
-    configPath: string;
+    configPath?: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -120,7 +126,8 @@ export function makeFormatRule(
     const {
       [implicitDeps]: _implicitDeps = [],
       [validations]: _validations,
-      configPath,
+      configPath = defaultConfigPath,
+      args = "",
       ...rest
     } = a;
     const input = getInput(a.in);
@@ -136,9 +143,13 @@ export function makeFormatRule(
           };
     format({
       out: result[orderOnlyDeps],
-      configPath: dirname(configPath),
+      args:
+        configPath === undefined ? args : args + "--config-path " + configPath,
       ...rest,
-      [implicitDeps]: _implicitDeps.concat(a.configPath),
+      [implicitDeps]:
+        configPath === undefined
+          ? _implicitDeps
+          : _implicitDeps.concat(configPath),
       ...validation,
     });
     return result;
@@ -146,11 +157,14 @@ export function makeFormatRule(
 }
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `biome format` on the input file and save the output to the specified file. The
- * returned function returns the `out` parameter passed in.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run `biome format` on the input file and save the output
+ * to the specified file. The returned function returns the `out` parameter passed in.
  *
- * The returned function takes a `configPath` property, which is the path to the
+ * Any `configPath`, `implicitDeps` or `orderOnlyDeps` passed in `options` will be added
+ * to all build edges generated with the returned function.
+ *
+ * The returned function takes an optional `configPath` property, which is the path to the
  * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
  * `args` property exists to pass in any additional options to the CLI.
  *
@@ -182,11 +196,16 @@ export function makeFormatRule(
  */
 export function makeFormatToRule(
   ninja: NinjaBuilder,
-  name = "formatTo",
+  options: {
+    name?: string;
+    configPath?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <O extends string>(args: {
   out: O;
   in: Input<string>;
-  configPath: string;
+  configPath?: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -197,51 +216,65 @@ export function makeFormatToRule(
   // for windows that has backslashes
   const cat = platform() === "win32" ? "type" : "cat";
   const inVar = platform() === "win32" ? "$inBackSlash" : "$in";
+  const { name = "formatTo", configPath: defaultConfigPath, ...rest } = options;
   const formatTo = ninja.rule(name, {
     command: `${prefix}${cat} ${inVar} | ${getBiomePath(
       ninja,
-    )} format $args --config-path $configPath --stdin-file-path=$in > $out`,
+    )} format $args --stdin-file-path=$in > $out`,
     description: "Formatting $in to $out",
     in: needs<Input<string>>(),
     out: needs<string>(),
-    configPath: needs<string>(),
-    args: "",
+    args: needs<string>(),
+    ...rest,
   });
   return <O extends string>(a: {
     out: O;
     in: Input<string>;
-    configPath: string;
+    configPath?: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
     [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): O => {
-    const { [implicitDeps]: _implicitDeps = [], configPath, ...rest } = a;
+    const {
+      [implicitDeps]: _implicitDeps = [],
+      configPath = defaultConfigPath,
+      args = "",
+      ...rest
+    } = a;
     const extra =
       platform() === "win32"
         ? { inBackSlash: getInput(a.in).replaceAll("/", "\\") }
         : {};
     return formatTo({
       ...rest,
-      configPath: dirname(configPath),
       ...extra,
-      [implicitDeps]: _implicitDeps.concat(a.configPath),
+      args:
+        configPath === undefined ? args : args + "--config-path " + configPath,
+      [implicitDeps]:
+        configPath === undefined
+          ? _implicitDeps
+          : _implicitDeps.concat(configPath),
     });
   };
 }
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `biome format` on the input file and write the results to a unspecified file, whose
- * path will be returned by the function along with a validation step on the unspecified
- * file containing the results. This causes all build edges that depend on this input to
- * add a validation step on checking whether the input file is correctly formatted.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run `biome format` on the input file and write the results
+ * to a unspecified file, whose path will be returned by the function along with a
+ * validation step on the unspecified file containing the results. This causes all build
+ * edges that depend on this input to add a validation step on checking whether the input
+ * file is correctly formatted.
  *
  * This is useful when build a ninja file for CI as you may not want to fix formatting
  * issues with {@link makeFormatRule} and only alert when a file is not formatted.
  *
- * The returned function takes a `configPath` property, which is the path to the
+ * Any `configPath`, `implicitDeps` or `orderOnlyDeps` passed in `options` will be added
+ * to all build edges generated with the returned function.
+ *
+ * The returned function takes an optional `configPath` property, which is the path to the
  * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
  * `args` property exists to pass in any additional options to the CLI.
  *
@@ -284,10 +317,15 @@ export function makeFormatToRule(
  */
 export function makeCheckFormattedRule(
   ninja: NinjaBuilder,
-  name = "checkFormatted",
+  options: {
+    name?: string;
+    configPath?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <I extends string>(args: {
   in: Input<I>;
-  configPath: string;
+  configPath?: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -298,20 +336,23 @@ export function makeCheckFormattedRule(
   [validations]: `$builddir/.ninjutsu-build/biome/checkFormatted/${I}`;
   [orderOnlyDeps]?: string | readonly string[];
 } {
+  const {
+    name = "checkFormatted",
+    configPath: defaultConfigPath,
+    ...rest
+  } = options;
   const checkFormatted = ninja.rule(name, {
     command:
-      prefix +
-      getBiomePath(ninja) +
-      ` format $args --config-path $configPath $in && ${touch} $out`,
+      prefix + getBiomePath(ninja) + ` format $args $in && ${touch} $out`,
     description: "Checking format of $in",
     in: needs<Input<string>>(),
     out: needs<string>(),
-    configPath: needs<string>(),
-    args: "",
+    args: needs<string>(),
+    ...rest,
   });
   return <I extends string>(a: {
     in: Input<I>;
-    configPath: string;
+    configPath?: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -322,16 +363,22 @@ export function makeCheckFormattedRule(
     [validations]: `$builddir/.ninjutsu-build/biome/checkFormatted/${I}`;
     [orderOnlyDeps]?: string | readonly string[];
   } => {
-    const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
-
+    const {
+      configPath = defaultConfigPath,
+      args = "",
+      [implicitDeps]: _implicitDeps = [],
+      ...rest
+    } = a;
     const file = getInput(a.in);
-    const validationFile =
-      `$builddir/.ninjutsu-build/biome/checkFormatted/${file}` as const;
-    checkFormatted({
-      out: validationFile,
-      configPath: dirname(configPath),
+    const validationFile = checkFormatted({
+      out: `$builddir/.ninjutsu-build/biome/checkFormatted/${file}`,
+      args:
+        configPath === undefined ? args : args + "--config-path " + configPath,
+      [implicitDeps]:
+        configPath === undefined
+          ? _implicitDeps
+          : _implicitDeps.concat(configPath),
       ...rest,
-      [implicitDeps]: _implicitDeps.concat(a.configPath),
     });
 
     // If there is a build-order dependency then we must return this to
@@ -351,13 +398,16 @@ export function makeCheckFormattedRule(
 }
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `biome lint` on the input file and write the results to a unspecified file, whose
- * path will be returned by the function along with a validation step on the unspecified
- * file containing the results. This causes all build edges that depend on this input to
- * add a validation step on the linting.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run `biome lint` on the input file and write the results to
+ * a unspecified file, whose path will be returned by the function along with a validation
+ * step on the unspecified file containing the results. This causes all build edges that
+ * depend on this input to add a validation step on the linting.
  *
- * The returned function takes a `configPath` property, which is the path to the
+ * Any `configPath`, `implicitDeps` or `orderOnlyDeps` passed in `options` will be added
+ * to all build edges generated with the returned function.
+ *
+ * The returned function takes an optional `configPath` property, which is the path to the
  * [`biome.json` configuration file](https://biome.dev/reference/configuration/).  An optional
  * `args` property exists to pass in any additional options to the CLI.
  *
@@ -416,10 +466,15 @@ export function makeCheckFormattedRule(
  */
 export function makeLintRule(
   ninja: NinjaBuilder,
-  name = "lint",
+  options: {
+    name?: string;
+    configPath?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <I extends string>(args: {
   in: Input<I>;
-  configPath: string;
+  configPath?: string;
   args?: string;
   [implicitDeps]?: string | readonly string[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -430,20 +485,18 @@ export function makeLintRule(
   [validations]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
   [orderOnlyDeps]?: string | readonly string[];
 } {
+  const { name = "lint", configPath: defaultConfigPath, ...rest } = options;
   const lint = ninja.rule(name, {
-    command:
-      prefix +
-      getBiomePath(ninja) +
-      ` lint $args --config-path $configPath $in && ${touch} $out`,
+    command: prefix + getBiomePath(ninja) + ` lint $args $in && ${touch} $out`,
     description: "Linting $in",
     in: needs<Input<string>>(),
     out: needs<string>(),
-    configPath: needs<string>(),
-    args: "",
+    args: needs<string>(),
+    ...rest,
   });
   return <I extends string>(a: {
     in: Input<I>;
-    configPath: string;
+    configPath?: string;
     args?: string;
     [implicitDeps]?: string | readonly string[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
@@ -454,16 +507,23 @@ export function makeLintRule(
     [validations]: `$builddir/.ninjutsu-build/biome/lint/${I}`;
     [orderOnlyDeps]?: string | readonly string[];
   } => {
-    const { configPath, [implicitDeps]: _implicitDeps = [], ...rest } = a;
+    const {
+      configPath = defaultConfigPath,
+      args = "",
+      [implicitDeps]: _implicitDeps = [],
+      ...rest
+    } = a;
 
     const file = getInput(a.in);
-    const validationFile =
-      `$builddir/.ninjutsu-build/biome/lint/${file}` as const;
-    lint({
-      out: validationFile,
-      configPath: dirname(configPath),
+    const validationFile = lint({
+      out: `$builddir/.ninjutsu-build/biome/lint/${file}`,
+      args:
+        configPath === undefined ? args : args + "--config-path " + configPath,
+      [implicitDeps]:
+        configPath === undefined
+          ? _implicitDeps
+          : _implicitDeps.concat(configPath),
       ...rest,
-      [implicitDeps]: _implicitDeps.concat(a.configPath),
     });
 
     // If there is a build-order dependency then we must return this to

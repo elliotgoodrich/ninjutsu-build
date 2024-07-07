@@ -55,9 +55,12 @@ function getNodeCommand(ninja: NinjaBuilder): string {
 }
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `node`, passing in the specified `in` JavaScript file and optional command arguments `args`,
- * and write the output to `out`.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run `node`, passing in the specified `in` JavaScript file
+ * and optional command arguments `args`, and write the output to `out`.
+ *
+ * Any `implicitDeps` or `orderOnlyDeps` passed in `options` will be added to all build
+ * edges generated with the returned function.
  *
  * All files `import`ed or `required` will be added as dependencies to `out`. So if any file
  * is later modified, `ninja` will rebuild `out` without you having to explicitly add
@@ -109,7 +112,11 @@ function getNodeCommand(ninja: NinjaBuilder): string {
  */
 export function makeNodeRule(
   ninja: NinjaBuilder,
-  name = "node",
+  options: {
+    name?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <O extends string>(a: {
   in: Input<string>;
   out: O;
@@ -122,6 +129,7 @@ export function makeNodeRule(
 }) => O {
   // Run within `cmd` in Windows in case the user wants to pipe the output to a file
   const prefix = platform() === "win32" ? "cmd /c " : "";
+  const { name = "node", ...rest } = options;
   return ninja.rule(name, {
     command: prefix + getNodeCommand(ninja) + " $nodeArgs $in $args $out",
     description: "Creating $out from 'node $in'",
@@ -131,14 +139,18 @@ export function makeNodeRule(
     deps: "gcc",
     args: "",
     nodeArgs: "",
+    ...rest,
   });
 }
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run [node's test runner](https://nodejs.org/api/test.html), passing in the specified
- * `in` JavaScript file and optional command arguments `args`, and write the test
- * output to `out`.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run [node's test runner](https://nodejs.org/api/test.html),
+ * passing in the specified `in` JavaScript file and optional command arguments `args`,
+ * and write the test output to `out`.
+ *
+ * Any `implicitDeps` or `orderOnlyDeps` passed in `options` will be added to all build
+ * edges generated with the returned function.
  *
  * All files `import`ed or `required` will be added as dependencies to `out`. So if any file
  * is later modified, `ninja` will rebuild `out` without you having to explicitly add
@@ -166,7 +178,11 @@ export function makeNodeRule(
  */
 export function makeNodeTestRule(
   ninja: NinjaBuilder,
-  name = "test",
+  options: {
+    name?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <O extends string>(a: {
   in: Input<string>;
   out: O;
@@ -177,6 +193,7 @@ export function makeNodeTestRule(
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
+  const { name = "test", ...rest } = options;
   return ninja.rule(name, {
     command:
       getNodeCommand(ninja) +
@@ -191,5 +208,6 @@ export function makeNodeTestRule(
     deps: "gcc",
     args: "",
     nodeArgs: "",
+    ...rest,
   });
 }
