@@ -253,6 +253,9 @@ export type TypeCheckRuleFn = {
  * No matter how files are specified, `tsc` compilation options can be supplied with
  * `compilerOptions` and will override any other options in the `tsconfig.json` file.
  *
+ * Any `implicitDeps` or `orderOnlyDeps` passed in `options` will be added to all build
+ * edges generated with the returned function.
+ *
  * WARNING! When adding new entry points to `tsconfig.json` or changing any options
  * that control the number or location of output files, the ninja file needs to be
  * regenerated to account for these.
@@ -306,8 +309,13 @@ export type TypeCheckRuleFn = {
  */
 export function makeTypeCheckRule(
   ninja: NinjaBuilder,
-  name = "typecheck",
+  options: {
+    name?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): TypeCheckRuleFn {
+  const { name = "typecheck", ...rest } = options;
   const typecheck = ninja.rule(name, {
     command:
       prefix +
@@ -323,6 +331,7 @@ export function makeTypeCheckRule(
     deps: "gcc",
     args: needs<string>(),
     tsconfig: "",
+    ...rest,
   });
   return (<O extends string>(
     a: (
@@ -424,6 +433,9 @@ export type TSCRuleFn = {
  * No matter how files are specified, `tsc` compilation options can be supplied with
  * `compilerOptions` and will override any other options in the `tsconfig.json` file.
  *
+ * Any `implicitDeps` or `orderOnlyDeps` passed in `options` will be added to all build
+ * edges generated with the returned function.
+ *
  * WARNING! When adding new entry points to `tsconfig.json` or changing any options
  * that control the number or location of output files, the ninja file needs to be
  * regenerated to account for these.
@@ -478,7 +490,15 @@ export type TSCRuleFn = {
  * writeFileSync("build.ninja", ninja.output);
  * ```
  */
-export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
+export function makeTSCRule(
+  ninja: NinjaBuilder,
+  options: {
+    name?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
+): TSCRuleFn {
+  const { name = "tsc", ...rest } = options;
   const tsc = ninja.rule(name, {
     command:
       prefix +
@@ -494,6 +514,7 @@ export function makeTSCRule(ninja: NinjaBuilder, name = "tsc"): TSCRuleFn {
     out: needs<string>(),
     args: needs<string>(),
     tsconfig: "",
+    ...rest,
   });
   return ((
     a: (

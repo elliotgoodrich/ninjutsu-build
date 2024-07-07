@@ -44,8 +44,12 @@ function serializeBuildOptions(args: Omit<BuildOptions, "outfile">): string {
 }
 
 /**
- * Create a rule in the specified `ninja` builder with the specified `name` that will
- * run `esbuild` on the input file and write the result to the output file.
+ * Create a rule in the specified `ninja` builder with the optionally specified
+ * `options.name` that will run `esbuild` on the input file and write the result to the
+ * output file.
+ *
+ * Any `implicitDeps` or `orderOnlyDeps` passed in `options` will be added to all build
+ * edges generated with the returned function.
  *
  * The returned function takes an optional `args` property, to pass any additional options
  * to the CLI.  Note that the `--bundle` flag is not passed by default so you most likely
@@ -87,7 +91,11 @@ function serializeBuildOptions(args: Omit<BuildOptions, "outfile">): string {
  */
 export function makeESBuildRule(
   ninja: NinjaBuilder,
-  name = "esbuild",
+  options: {
+    name?: string;
+    [implicitDeps]?: string | readonly string[];
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
 ): <O extends string>(args: {
   in: Input<string>;
   out: O;
@@ -97,6 +105,7 @@ export function makeESBuildRule(
   [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
+  const { name = "esbuild", ...rest } = options;
   const rm = process.platform === "win32" ? "del" : "rm";
   const absOutput = resolve(process.cwd(), ninja.outputDir);
   const jq = relative(
@@ -128,6 +137,7 @@ export function makeESBuildRule(
     args: "",
     depfile: "$out.deps",
     deps: "gcc",
+    ...rest,
   });
   return <O extends string>(args: {
     in: Input<string>;

@@ -66,6 +66,7 @@ test("Serializing CompilerOptions", () => {
 test("makeTSCRule", () => {
   const ninja = new NinjaBuilder();
   const tsc = makeTSCRule(ninja);
+  const tscNamed = makeTSCRule(ninja, { name: "typescript" });
   assert.deepEqual(
     tsc({
       in: ["src/common/index.ts"],
@@ -77,7 +78,7 @@ test("makeTSCRule", () => {
   );
 
   assert.deepEqual(
-    tsc({
+    tscNamed({
       in: ["index.cts"],
       compilerOptions: {
         declaration: true,
