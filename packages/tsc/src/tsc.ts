@@ -192,7 +192,55 @@ async function showConfig(
     join(ninja.outputDir, getInput(tsConfig)),
   ]);
 
+  // `--showConfig` displays valid JSON so use the built-in parser
   return JSON.parse(stdout);
+}
+
+/**
+ * Return the list of entry points specified in the `tsconfig.json` file
+ * located at the specified `tsConfigPath`.  This is a combination of
+ * the `files`, `include`, and `exclude` properties, see the
+ * [`tsconfig.json` documentation](https://www.typescriptlang.org/docs/handbook/tsconfig-json.html)
+ * for further information.
+ */
+export async function getEntryPointsFromConfig(
+  ninja: NinjaBuilder,
+  tsConfigPath: Input<string>,
+): Promise<string[]> {
+  const tsConfigPathRaw = join(ninja.outputDir, getInput(tsConfigPath));
+  const buffer = await readFile(tsConfigPathRaw);
+
+  // Use TypeScript's parsing to handle comments
+  let { config, error } = ts.parseConfigFileTextToJson(
+    tsConfigPathRaw,
+    buffer.toString(),
+  );
+  if (config === undefined) {
+    throw new Error(
+      error === undefined
+        ? `Unknown error while parsing ${tsConfigPathRaw}`
+        : `${error.messageText}`,
+    );
+  }
+
+  // If we don't have any `include` property then `files` gives us
+  // exactly the entry points we care about
+  if (Array.isArray(config.include) && config.include.length > 0) {
+    // There is no public typescript method to get the full list of entry points
+    // so instead we call out to `tsc --showConfig`.
+    const { stdout } = await execFile(node, [
+      tsc,
+      getTSCPath(ninja),
+      "--showConfig",
+      "--project",
+      tsConfigPathRaw,
+    ]);
+    // `--showConfig` displays valid JSON so use the built-in parser
+    config = JSON.parse(stdout);
+  }
+
+  const directory = dirname(getInput(tsConfigPath));
+  return config.files.map((f: string) => join(directory, f));
 }
 
 export type TypeCheckRuleFn = {

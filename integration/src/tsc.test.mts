@@ -1,7 +1,11 @@
 import { beforeEach, test, describe } from "node:test";
 import { strict as assert } from "node:assert";
 import { NinjaBuilder, getInput, validations } from "@ninjutsu-build/core";
-import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
+import {
+  getEntryPointsFromConfig,
+  makeTSCRule,
+  makeTypeCheckRule,
+} from "@ninjutsu-build/tsc";
 import { writeFileSync, mkdirSync, symlinkSync, existsSync } from "node:fs";
 import { join } from "node:path/posix";
 import {
@@ -269,6 +273,10 @@ describe("tsc", (suiteCtx) => {
       "src/myOutput/script.mjs",
       "src/myOutput/script.d.mts",
     ]);
+    assert.deepEqual(
+      await getEntryPointsFromConfig(ninja, "src/tsconfig.json"),
+      ["src/script.mts"],
+    );
 
     const typechecked = await typecheck({
       tsConfig: { file: "src/tsconfig.json" },
