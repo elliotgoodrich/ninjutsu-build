@@ -4,7 +4,11 @@ import {
   orderOnlyDeps,
   validations,
 } from "@ninjutsu-build/core";
-import { makeTSCRule, makeTypeCheckRule } from "@ninjutsu-build/tsc";
+import {
+  getEntryPointsFromConfig,
+  makeTSCRule,
+  makeTypeCheckRule,
+} from "@ninjutsu-build/tsc";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
 import {
   makeCheckFormattedRule,
@@ -25,49 +29,25 @@ if (isCi) {
   console.log("Running in CI mode");
 }
 
-const extLookup = {
-  ".ts": ".js",
-  ".mts": ".mjs",
-  ".cts": ".cjs",
-};
-
-// Given a path to a JS file, return the filename of the
-// resulting TS file
-function getTSFileName(jspath) {
-  const ext = extname(jspath);
-  return basename(jspath, ext) + extLookup[ext];
-}
-
-const prefix = platform() === "win32" ? "cmd /c " : "";
-const exe = platform() === "win32" ? ".exe" : "";
-
+// Create a rule to run `npm ci` in a particular directory
 function makeNpmCiRule(ninja) {
-  const ci = ninja.rule("npmci", {
-    command: prefix + "npm ci --prefix $cwd --silent",
-    description: "npm ci ($cwd)",
+  const prefix = platform() === "win32" ? "cmd /c " : "";
+  const npmci = ninja.rule("npmci", {
+    command: prefix + "npm ci $args --silent",
+    description: "npm ci $args",
     generator: 1,
   });
   return (a) => {
+    const { args = "", ...rest } = a;
     const cwd = dirname(getInput(a.in));
-    return ci({
+    const withCwd = cwd !== "." ? ` --prefix ${cwd}` : "";
+    return npmci({
       ...a,
       out: join(cwd, "node_modules", ".package-lock.json"),
-      cwd,
+      args: withCwd + args,
+      ...rest,
     });
   };
-}
-
-function makeNpmCiWorkspaces(ninja) {
-  const ci = ninja.rule("npmciworkspaces", {
-    command: prefix + "npm ci --workspaces --silent",
-    description: "npm ci --workspaces",
-    generator: 1,
-  });
-  return (a) =>
-    ci({
-      ...a,
-      out: join(dirname(getInput(a.in)), "node_modules", ".package-lock.json"),
-    });
 }
 
 function makeTarRule(ninja) {
@@ -98,13 +78,28 @@ function makeCopyRule(ninja) {
   });
 }
 
+// Given a path to a JS file, return the filename of the
+// resulting TS file
+function getTSFileName(jspath) {
+  const ext = extname(jspath);
+  const extLookup = {
+    ".ts": ".js",
+    ".mts": ".mjs",
+    ".cts": ".cjs",
+  };
+
+  return basename(jspath, ext) + extLookup[ext];
+}
+
+// Create a rule to run `swc`, which we used to transpile TypeScript
 function makeSWCRule(ninja) {
   const swcPath = relativeNative(
     resolveNative(process.cwd(), ninja.outputDir),
     fileURLToPath(import.meta.resolve("@swc/cli")),
   );
+  const node = platform() === "win32" ? "node.exe" : "node";
   const swc = ninja.rule("swc", {
-    command: `node${exe} ${swcPath} $in -o $out -q $args`,
+    command: `${node} ${swcPath} $in -o $out -q $args`,
     description: "Transpiling $in",
   });
   return (a) => {
@@ -124,34 +119,9 @@ function formatAndLint(file) {
   return lint({ in: formatted });
 }
 
-const biomeConfig = join("configure", "biome.json");
-
-async function loadSourcesFromTSConfig(tsConfig) {
-  tsConfig = getInput(tsConfig);
-  try {
-    const buffer = readFileSync(tsConfig);
-    let tsConfigObj = JSON.parse(buffer.toString());
-    if (Array.isArray(tsConfigObj.include) && tsConfigObj.include.length > 0) {
-      const { stdout } = await execFile(node, [
-        getTSCPath(ninja),
-        "--showConfig",
-        "--project",
-        tsConfigPath,
-      ]);
-      tsConfigObj = JSON.parse(stdout);
-    }
-
-    const directory = dirname(tsConfig);
-    return tsConfigObj.files.map((f) => join(directory, f));
-  } catch (e) {
-    throw new Error(`${tsConfig}: ${e}`);
-  }
-}
-
 const ninja = new NinjaBuilder({
   builddir: ".builddir",
-  // validations were added in 1.11
-  ninja_required_version: "1.11",
+  ninja_required_version: "1.11", // validations were added in 1.11
 });
 
 const workspacePkg = "package.json";
@@ -159,11 +129,12 @@ const workspaceJSON = JSON.parse(readFileSync(workspacePkg));
 
 ninja.output += "\n";
 ninja.comment("Rules + Installation");
-const ci = makeNpmCiRule(ninja);
-const ciworkpace = makeNpmCiWorkspaces(ninja);
+const npmci = makeNpmCiRule(ninja);
 
 const { phony } = ninja;
-const packagesLinked = ciworkpace({ in: workspacePkg });
+const packagesLinked = npmci({ in: workspacePkg, args: "--workspaces" });
+
+const biomeConfig = "configure/biome.json";
 
 // We would like to check whether `package.json` is formatted correctly.
 // Most of the rules inject a build-order dependency on `npm ci` having
@@ -173,12 +144,12 @@ const packagesLinked = ciworkpace({ in: workspacePkg });
 // create the `checkFormatted` rule but that what the code below does.
 let checkFormatted;
 
-const toolsInstalled = ci({
+const toolsInstalled = npmci({
   in: "configure/package.json",
-  [validations]: (out) => {
+  [validations]: (toolsInstalled) => {
     checkFormatted = makeCheckFormattedRule(ninja, {
       configPath: biomeConfig,
-      [orderOnlyDeps]: out,
+      [orderOnlyDeps]: toolsInstalled,
     });
     // Add a validation that `package.json` is formatted correctly.
     // If we formatted after running `npmci` it would cause us to run it again
@@ -208,11 +179,15 @@ const transpile = makeSWCRule(ninja, {
 });
 
 format({ in: "configure/configure.mjs" });
-
 const baseConfig = format({ in: "tsconfig.json" });
 
+// Create a list of all targets that need to be ready before we
+// can run `typedoc`.
 const docsDependencies = [];
 
+// Go through all of the packages in our workspaces to lint, format,
+// typecheck, transpile, and run tests, making sure that we have set
+// up the correct intra-package dependencies
 const scope = "@ninjutsu-build/";
 for (const cwd of workspaceJSON.workspaces) {
   const localPKGJSON = JSON.parse(
@@ -246,11 +221,15 @@ for (const cwd of workspaceJSON.workspaces) {
 
   // Grab all TypeScript source files and format them
   const tsconfig = format({ in: join(cwd, "tsconfig.json") });
-  const sources = (await loadSourcesFromTSConfig(tsconfig)).map(formatAndLint);
+  const sources = (await getEntryPointsFromConfig(ninja, tsconfig)).map(
+    formatAndLint,
+  );
 
   const outDir = join(cwd, "dist");
 
-  // Transpile the TypeScript into JavaScript
+  // Transpile the TypeScript into JavaScript, do this separately from `tsc`
+  // as `swc` is much faster and this allows us to start executing unit tests
+  // in parallel to typechecking and type declaration generation
   const javascript = sources.map((s) =>
     transpile({
       in: s,
@@ -259,13 +238,14 @@ for (const cwd of workspaceJSON.workspaces) {
   );
 
   // Create a phony target for when the package has all its JavaScript built
-  // and it is ready to be executed.
+  // and it is ready to be executed.  This will be used by depenendent
+  // packages to rely on before they can invoke their unit tests.
   const packageRunnable = phony({
     out: `${localPKGJSON.name}/runnable`,
     in: [packageJSON, ...javascript, ...dependenciesRunnable],
   });
 
-  // Create the TypeScript type declaration files and do typechecking
+  // Create the TypeScript type declaration files and do typechecking.
   const typeDeclarations = await tsc({
     tsConfig: tsconfig,
     compilerOptions: {
@@ -286,13 +266,14 @@ for (const cwd of workspaceJSON.workspaces) {
 
   docsDependencies.push(packageHasTypes);
 
-  // Type check all the tests
+  // Format, lint, typecheck, tranpile, and run any unit tests
   const testTargets = await (async () => {
     if (!existsSync(join(cwd, "tsconfig.tests.json"))) {
       return [];
     }
     const testTSConfig = format({ in: join(cwd, "tsconfig.tests.json") });
-    const tests = await loadSourcesFromTSConfig(testTSConfig);
+    const tests = await getEntryPointsFromConfig(ninja, testTSConfig);
+
     if (tests.length === 0) {
       return [];
     }
@@ -319,6 +300,7 @@ for (const cwd of workspaceJSON.workspaces) {
     });
   })();
 
+  // Tar and gzip our entire package so it can be published to npm
   const createTar = (() => {
     // We assume packages are published if and only if they have a version number.
     // This allows us to avoid creating an archive for the `integration` package.
@@ -359,6 +341,9 @@ for (const cwd of workspaceJSON.workspaces) {
   });
 }
 
+// Create a target that can be used for anyone wanting to prep the
+// project to do the bare minimum in order to generate documentation
 phony({ out: "prep-for-docs", in: docsDependencies });
 
+// Finally, write the resulting file to disk
 writeFileSync("build.ninja", ninja.output);
