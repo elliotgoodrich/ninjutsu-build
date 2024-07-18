@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/bun",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A bun plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
   "scripts": {
@@ -22,6 +22,6 @@
     "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
   },
   "peerDependencies": {
-    "@ninjutsu-build/core": "^0.8.9"
+    "@ninjutsu-build/core": "^0.9.0"
   }
 }

@@ -114,7 +114,7 @@ export function makeNodeRule(
   ninja: NinjaBuilder,
   options: {
     name?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <O extends string>(a: {
@@ -122,10 +122,10 @@ export function makeNodeRule(
   out: O;
   args: string;
   nodeArgs?: string;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
-  [validations]?: (out: string) => string | readonly string[];
+  [validations]?: (out: string) => Input<string> | readonly Input<string>[];
 }) => O {
   // Run within `cmd` in Windows in case the user wants to pipe the output to a file
   const prefix = platform() === "win32" ? "cmd /c " : "";
@@ -180,7 +180,7 @@ export function makeNodeTestRule(
   ninja: NinjaBuilder,
   options: {
     name?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <O extends string>(a: {
@@ -188,10 +188,10 @@ export function makeNodeTestRule(
   out: O;
   args?: string;
   nodeArgs?: string;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   [implicitOut]?: string | readonly string[];
-  [validations]?: (out: string) => string | readonly string[];
+  [validations]?: (out: string) => Input<string> | readonly Input<string>[];
 }) => O {
   const { name = "test", ...rest } = options;
   return ninja.rule(name, {

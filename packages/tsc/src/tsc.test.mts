@@ -9,7 +9,6 @@ import {
 import {
   NinjaBuilder,
   implicitDeps,
-  implicitOut,
   orderOnlyDeps,
   validations,
 } from "@ninjutsu-build/core";
@@ -85,7 +84,6 @@ test("makeTSCRule", () => {
         outDir: "",
       },
       [implicitDeps]: ["implicitDeps"],
-      [implicitOut]: ["implicitOut"],
       [orderOnlyDeps]: ["orderOnlyDeps"],
       [validations]: (out) => [out[0] + "_validation"],
     }),

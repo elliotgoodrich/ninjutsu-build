@@ -169,7 +169,10 @@ test("phony rule", () => {
 
   const out5: "buildOrder" = phony({
     out: "buildOrder",
-    in: ["in1", { file: "ignored", [orderOnlyDeps]: "in2" }],
+    in: [
+      "in1",
+      { file: "in2", [orderOnlyDeps]: "in3", [validations]: "ignored" },
+    ],
   });
   assert.equal(out5, "buildOrder");
 
@@ -179,7 +182,7 @@ test("phony rule", () => {
 build my$:$:$ alia$$ !: phony file$$ .txt
 build all: phony in1 in2
 build none: phony
-build buildOrder: phony in1 in2
+build buildOrder: phony in1 in2 in3
 `,
   );
 });
@@ -297,7 +300,7 @@ test("Passing all arguments to a `NinjaRule`", () => {
     in: needs<Input<string>>(),
     command: "[command]",
     description: "[desc]",
-    [orderOnlyDeps]: ["oA", { file: "unused", [orderOnlyDeps]: "oB" }],
+    [orderOnlyDeps]: ["oA", { file: "oB", [orderOnlyDeps]: "oC" }],
   });
   const out: "out.txt" = all({
     out: "out.txt",
@@ -309,7 +312,7 @@ test("Passing all arguments to a `NinjaRule`", () => {
     [implicitOut]: ["implicitOut_"],
     [orderOnlyDeps]: [
       "orderOnlyDeps_A",
-      { file: "unused", [orderOnlyDeps]: "orderOnlyDeps_B" },
+      { file: "orderOnlyDeps_B", [orderOnlyDeps]: "orderOnlyDeps_C" },
     ],
     [validations]: (out) => ["validations_" + out],
     pool: "pool",
@@ -319,13 +322,15 @@ test("Passing all arguments to a `NinjaRule`", () => {
     out: "foo",
     in: {
       file: "hi",
-      [implicitDeps]: "implicit1",
       [orderOnlyDeps]: "ordered1",
       [validations]: ["valid1"],
     },
-    [implicitDeps]: "implicit2",
+    [implicitDeps]: "implicit1",
     [orderOnlyDeps]: ["ordered2", { file: "ordered3" }],
-    [validations]: (out: string) => "valid2_" + out,
+    [validations]: (out: string) => ({
+      file: "valid2_" + out,
+      [validations]: "valid3",
+    }),
   });
   assert.equal(out, "out.txt");
   assert.equal(
@@ -333,13 +338,13 @@ test("Passing all arguments to a `NinjaRule`", () => {
     `rule all
   command = [command]
   description = [desc]
-build out.txt | implicitOut_: all in.txt | implicitDeps_ || oA oB orderOnlyDeps_A orderOnlyDeps_B |@ validations_out.txt
+build out.txt | implicitOut_: all in.txt | implicitDeps_ || oA oB oC orderOnlyDeps_A orderOnlyDeps_B orderOnlyDeps_C |@ validations_out.txt
   dyndep = dyndep_
   command = command_
   description = description_
   pool = pool
   extra = 123
-build foo: all hi | implicit1 implicit2 || oA oB ordered1 ordered2 ordered3 |@ valid1 valid2_foo
+build foo: all hi | implicit1 || oA oB oC ordered1 ordered2 ordered3 |@ valid1 valid2_foo valid3
 `,
   );
 });
@@ -415,7 +420,6 @@ test("additional rule dependencies", () => {
     command: "echo 'hi' > $out",
     out: needs<string>(),
     [implicitDeps]: ["ruleDeps"],
-    [implicitOut]: "ruleOut",
     [orderOnlyDeps]: ["ruleOrder1", "ruleOrder2"],
   });
 
@@ -431,8 +435,8 @@ test("additional rule dependencies", () => {
     ninja.output,
     `rule generate
   command = echo 'hi' > $out
-build out | ruleOut: generate | ruleDeps || ruleOrder1 ruleOrder2
-build out2 | ruleOut buildOut1 buildOut2: generate | ruleDeps buildDeps1 || ruleOrder1 ruleOrder2 buildOrder1
+build out: generate | ruleDeps || ruleOrder1 ruleOrder2
+build out2 | buildOut1 buildOut2: generate | ruleDeps buildDeps1 || ruleOrder1 ruleOrder2 buildOrder1
 `,
   );
 });

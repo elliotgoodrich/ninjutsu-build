@@ -248,20 +248,18 @@ export type TypeCheckRuleFn = {
     in: readonly Input<string>[];
     compilerOptions?: CompilerOptions;
     out: O;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
-    [validations]?: (out: string) => string | readonly string[];
+    [validations]?: (out: string) => Input<string> | readonly Input<string>[];
   }): { file: string; [validations]: O }[];
 
   <O2 extends string>(a: {
     tsConfig: string;
     compilerOptions?: CompilerOptions;
     out: O2;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
-    [validations]?: (out: string) => string | readonly string[];
+    [validations]?: (out: string) => Input<string> | readonly Input<string>[];
   }): Promise<{ file: string; [validations]: O2 }[]>;
   <O3 extends string>(
     a: (
@@ -274,9 +272,8 @@ export type TypeCheckRuleFn = {
     ) & {
       compilerOptions?: CompilerOptions;
       out: O3;
-      [implicitDeps]?: string | readonly string[];
+      [implicitDeps]?: Input<string> | readonly Input<string>[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-      [implicitOut]?: string | readonly string[];
       [validations]?: (out: string) => string | readonly string[];
     },
   ):
@@ -359,7 +356,7 @@ export function makeTypeCheckRule(
   ninja: NinjaBuilder,
   options: {
     name?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): TypeCheckRuleFn {
@@ -392,10 +389,9 @@ export function makeTypeCheckRule(
     ) & {
       compilerOptions?: CompilerOptions;
       out: O;
-      [implicitDeps]?: string | readonly string[];
+      [implicitDeps]?: Input<string> | readonly Input<string>[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-      [implicitOut]?: string | readonly string[];
-      [validations]?: (out: string) => string | readonly string[];
+      [validations]?: (out: string) => Input<string> | readonly Input<string>[];
     },
   ):
     | { file: string; [validations]: O }[]
@@ -433,18 +429,20 @@ export type TSCRuleFn = {
   (a: {
     in: readonly Input<string>[];
     compilerOptions?: CompilerOptions;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
-    [validations]?: (out: readonly string[]) => string | readonly string[];
+    [validations]?: (
+      out: readonly string[],
+    ) => Input<string> | readonly Input<string>[];
   }): string[];
   (a: {
     tsConfig: Input<string>;
     compilerOptions?: CompilerOptions;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
-    [validations]?: (out: readonly string[]) => string | readonly string[];
+    [validations]?: (
+      out: readonly string[],
+    ) => Input<string> | readonly Input<string>[];
   }): Promise<string[]>;
   (
     a: (
@@ -456,10 +454,11 @@ export type TSCRuleFn = {
         }
     ) & {
       compilerOptions?: CompilerOptions;
-      [implicitDeps]?: string | readonly string[];
+      [implicitDeps]?: Input<string> | readonly Input<string>[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-      [implicitOut]?: string | readonly string[];
-      [validations]?: (out: readonly string[]) => string | readonly string[];
+      [validations]?: (
+        out: readonly string[],
+      ) => Input<string> | readonly Input<string>[];
     },
   ): string[] | Promise<string[]>;
 };
@@ -542,7 +541,7 @@ export function makeTSCRule(
   ninja: NinjaBuilder,
   options: {
     name?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): TSCRuleFn {
@@ -574,19 +573,15 @@ export function makeTSCRule(
         }
     ) & {
       compilerOptions?: CompilerOptions;
-      [implicitDeps]?: string | readonly string[];
+      [implicitDeps]?: Input<string> | readonly Input<string>[];
       [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-      [implicitOut]?: string | readonly string[];
-      [validations]?: (out: readonly string[]) => string | readonly string[];
+      [validations]?: (
+        out: readonly string[],
+      ) => Input<string> | readonly Input<string>[];
     },
   ): string[] | Promise<string[]> => {
     if ("in" in a) {
-      const {
-        compilerOptions = {},
-        [implicitOut]: _implicitOut = [],
-        [validations]: _validations,
-        ...rest
-      } = a;
+      const { compilerOptions = {}, [validations]: _validations, ...rest } = a;
 
       const args = compilerOptionsToArray(compilerOptions);
       const commandLine = ts.parseCommandLine(
@@ -604,7 +599,7 @@ export function makeTSCRule(
         ...rest,
         out: out[0],
         args: args.join(" "),
-        [implicitOut]: out.slice(1).concat(_implicitOut),
+        [implicitOut]: out.slice(1),
         [validations]:
           _validations === undefined ? undefined : () => _validations(out),
       });
@@ -613,7 +608,6 @@ export function makeTSCRule(
       const {
         tsConfig,
         compilerOptions: overrideOptions = {},
-        [implicitOut]: _implicitOut = [],
         [validations]: _validations,
         ...rest
       } = a;
@@ -643,7 +637,7 @@ export function makeTSCRule(
           out: out[0],
           args: compilerOptionsToString(overrideOptions) + " -p",
           tsconfig: `--tsconfig ${getInput(tsConfig)}`,
-          [implicitOut]: out.slice(1).concat(_implicitOut),
+          [implicitOut]: out.slice(1),
           [validations]:
             _validations === undefined ? undefined : () => _validations(out),
         });

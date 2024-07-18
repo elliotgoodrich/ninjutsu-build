@@ -36,7 +36,6 @@ test("makeLintRule", () => {
   } = lint({
     in: {
       file: "bar.js",
-      [implicitDeps]: ["implicitDeps"],
       [orderOnlyDeps]: ["buildOrder"],
       [validations]: ["validation"],
     },

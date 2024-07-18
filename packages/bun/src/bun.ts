@@ -3,11 +3,19 @@ import {
   type Input,
   needs,
   implicitDeps,
-  implicitOut,
   validations,
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
 import { existsSync } from "node:fs";
+
+function concatConfig(
+  implicitDeps: Input<string> | readonly Input<string>[],
+): readonly Input<string>[] {
+  const arrayDeps = Array.isArray(implicitDeps) ? implicitDeps : [implicitDeps];
+  return existsSync("bunfig.toml")
+    ? arrayDeps.concat("bunfig.toml")
+    : arrayDeps;
+}
 
 /**
  * Create a rule in the specified `ninja` builder with the optionally specified
@@ -51,26 +59,29 @@ export function makeTranspileRule(
   ninja: NinjaBuilder,
   options: {
     name?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <O extends string>(args: {
   in: Input<string>;
   out: O;
   args?: string;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-  [implicitOut]?: string | readonly string[];
-  [validations]?: (out: string) => string | readonly string[];
+  [validations]?: (out: string) => Input<string> | readonly Input<string>[];
 }) => O {
-  const { name = "buntranspile", ...rest } = options;
+  const {
+    name = "buntranspile",
+    [implicitDeps]: _implicitDeps = [],
+    ...rest
+  } = options;
   return ninja.rule(name, {
     command: "bun build $in --outfile $out --no-bundle $args",
     description: "Transpiling $in",
     in: needs<Input<string>>(),
     out: needs<string>(),
     args: "",
-    [implicitDeps]: existsSync("bunfig.toml") ? "bunfig.toml" : undefined,
+    [implicitDeps]: concatConfig(_implicitDeps),
     ...rest,
   });
 }

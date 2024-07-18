@@ -4,7 +4,6 @@ import {
   needs,
   getInput,
   implicitDeps,
-  implicitOut,
   validations,
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
@@ -24,6 +23,15 @@ function getBiomePath(ninja: NinjaBuilder): string {
       join("@biomejs", `cli-${platform()}-${arch()}`, `biome${exe}`),
     ),
   );
+}
+
+// A small helper function to create our `[implicitDeps]` property value
+function concatConfig(
+  implicitDeps: Input<string> | readonly Input<string>[],
+  configPath: string | undefined,
+): readonly Input<string>[] {
+  const arrayDeps = Array.isArray(implicitDeps) ? implicitDeps : [implicitDeps];
+  return configPath === undefined ? arrayDeps : arrayDeps.concat(configPath);
 }
 
 /**
@@ -81,20 +89,19 @@ export function makeFormatRule(
   options: {
     name?: string;
     configPath?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <I extends string>(args: {
   in: Input<I>;
   configPath?: string;
   args?: string;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-  [implicitOut]?: string | readonly string[];
   [validations]?: (out: {
     file: string;
     [orderOnlyDeps]: string;
-  }) => string | readonly string[];
+  }) => Input<string> | readonly Input<string>[];
 }) => {
   file: I;
   [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${I}`;
@@ -112,13 +119,12 @@ export function makeFormatRule(
     in: Input<I>;
     configPath?: string;
     args?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
     [validations]?: (out: {
       file: string;
       [orderOnlyDeps]: string;
-    }) => string | readonly string[];
+    }) => Input<string> | readonly Input<string>[];
   }): {
     file: I;
     [orderOnlyDeps]: `$builddir/.ninjutsu-build/biome/format/${I}`;
@@ -146,10 +152,7 @@ export function makeFormatRule(
       args:
         configPath === undefined ? args : args + "--config-path " + configPath,
       ...rest,
-      [implicitDeps]:
-        configPath === undefined
-          ? _implicitDeps
-          : _implicitDeps.concat(configPath),
+      [implicitDeps]: concatConfig(_implicitDeps, configPath),
       ...validation,
     });
     return result;
@@ -199,7 +202,7 @@ export function makeFormatToRule(
   options: {
     name?: string;
     configPath?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <O extends string>(args: {
@@ -207,9 +210,8 @@ export function makeFormatToRule(
   in: Input<string>;
   configPath?: string;
   args?: string;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-  [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => O {
   // Type cannot handle forward slashes in paths so instead we pass `$inBackSlash`
@@ -232,9 +234,8 @@ export function makeFormatToRule(
     in: Input<string>;
     configPath?: string;
     args?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): O => {
     const {
@@ -252,10 +253,7 @@ export function makeFormatToRule(
       ...extra,
       args:
         configPath === undefined ? args : args + "--config-path " + configPath,
-      [implicitDeps]:
-        configPath === undefined
-          ? _implicitDeps
-          : _implicitDeps.concat(configPath),
+      [implicitDeps]: concatConfig(_implicitDeps, configPath),
     });
   };
 }
@@ -320,16 +318,15 @@ export function makeCheckFormattedRule(
   options: {
     name?: string;
     configPath?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <I extends string>(args: {
   in: Input<I>;
   configPath?: string;
   args?: string;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-  [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => {
   file: I;
@@ -354,9 +351,8 @@ export function makeCheckFormattedRule(
     in: Input<I>;
     configPath?: string;
     args?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): {
     file: I;
@@ -374,10 +370,7 @@ export function makeCheckFormattedRule(
       out: `$builddir/.ninjutsu-build/biome/checkFormatted/${file}`,
       args:
         configPath === undefined ? args : args + "--config-path " + configPath,
-      [implicitDeps]:
-        configPath === undefined
-          ? _implicitDeps
-          : _implicitDeps.concat(configPath),
+      [implicitDeps]: concatConfig(_implicitDeps, configPath),
       ...rest,
     });
 
@@ -469,16 +462,15 @@ export function makeLintRule(
   options: {
     name?: string;
     configPath?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <I extends string>(args: {
   in: Input<I>;
   configPath?: string;
   args?: string;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-  [implicitOut]?: string | readonly string[];
   [validations]?: (out: string) => string | readonly string[];
 }) => {
   file: I;
@@ -498,9 +490,8 @@ export function makeLintRule(
     in: Input<I>;
     configPath?: string;
     args?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
     [validations]?: (out: string) => string | readonly string[];
   }): {
     file: I;
@@ -519,10 +510,7 @@ export function makeLintRule(
       out: `$builddir/.ninjutsu-build/biome/lint/${file}`,
       args:
         configPath === undefined ? args : args + "--config-path " + configPath,
-      [implicitDeps]:
-        configPath === undefined
-          ? _implicitDeps
-          : _implicitDeps.concat(configPath),
+      [implicitDeps]: concatConfig(_implicitDeps, configPath),
       ...rest,
     });
 

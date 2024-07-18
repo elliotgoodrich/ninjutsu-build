@@ -3,7 +3,6 @@ import {
   type Input,
   needs,
   implicitDeps,
-  implicitOut,
   validations,
   orderOnlyDeps,
 } from "@ninjutsu-build/core";
@@ -93,17 +92,16 @@ export function makeESBuildRule(
   ninja: NinjaBuilder,
   options: {
     name?: string;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
   } = {},
 ): <O extends string>(args: {
   in: Input<string>;
   out: O;
   buildOptions?: Omit<BuildOptions, "outfile">;
-  [implicitDeps]?: string | readonly string[];
+  [implicitDeps]?: Input<string> | readonly Input<string>[];
   [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-  [implicitOut]?: string | readonly string[];
-  [validations]?: (out: string) => string | readonly string[];
+  [validations]?: (out: string) => Input<string> | readonly Input<string>[];
 }) => O {
   const { name = "esbuild", ...rest } = options;
   const rm = process.platform === "win32" ? "del" : "rm";
@@ -143,10 +141,9 @@ export function makeESBuildRule(
     in: Input<string>;
     out: O;
     buildOptions?: Omit<BuildOptions, "outfile">;
-    [implicitDeps]?: string | readonly string[];
+    [implicitDeps]?: Input<string> | readonly Input<string>[];
     [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-    [implicitOut]?: string | readonly string[];
-    [validations]?: (out: string) => string | readonly string[];
+    [validations]?: (out: string) => Input<string> | readonly Input<string>[];
   }): O => {
     const { buildOptions = {}, ...rest } = args;
     return rule({
