@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/node",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "description": "A ninjutsu-build plugin to generate ninja rules to execute JavaScript with node",
   "author": "Elliot Goodrich",
   "scripts": {
@@ -33,6 +33,6 @@
     "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
   },
   "peerDependencies": {
-    "@ninjutsu-build/core": "^0.8.9"
+    "@ninjutsu-build/core": "^0.9.0"
   }
 }

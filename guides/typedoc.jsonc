@@ -1,5 +1,8 @@
 {
     "$schema": "https://typedoc.org/schema.json",
     "name": "Guides",
-    "projectDocuments": ["./*.md"]
+    "projectDocuments": [
+        "Why Ninjutsu Build.md",
+        "Ninjutsu Build Extras.md",
+    ],
 }
