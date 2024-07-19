@@ -11,6 +11,6 @@
   "scripts": {
     "build": "ninja",
     "configure": "node configure/configure.mjs",
-    "docs": "cd configure && npx typedoc"
+    "docs": "cd configure && npx typedoc --sortEntryPoints false"
   }
 }
