@@ -104,7 +104,13 @@ export function makeESBuildRule(
   [validations]?: (out: string) => Input<string> | readonly Input<string>[];
 }) => O {
   const { name = "esbuild", ...rest } = options;
-  const rm = process.platform === "win32" ? "del" : "rm";
+
+  // Replace backslashes with forwardslashes to pass to `del`
+  const toDelete =
+    process.platform === "win32"
+      ? `del "$outDepsBackslash"`
+      : "rm $out.deps.json";
+
   const absOutput = resolve(process.cwd(), ninja.outputDir);
   const jq = relative(
     absOutput,
@@ -126,7 +132,7 @@ export function makeESBuildRule(
   const prefix = process.platform === "win32" ? "cmd /c " : "";
   const command =
     `${prefix}${esbuild} $in --outfile=$out --log-level=warning --color=true --metafile=$out.deps.json $args && ` +
-    `${jq} "[\\"$out:\\"] + (.inputs | keys) | map(.+\\" \\")[]" $out.deps.json --join-output > $out.deps && ${rm} $out.deps.json`;
+    `${jq} "[\\"$out:\\"] + (.inputs | keys) | map(.+\\" \\")[]" $out.deps.json --join-output > $out.deps && ${toDelete}`;
   const rule = ninja.rule(name, {
     command,
     description: "Bundling $out",
@@ -149,6 +155,9 @@ export function makeESBuildRule(
     return rule({
       ...rest,
       args: serializeBuildOptions(buildOptions),
+      ...(process.platform === "win32"
+        ? { outDepsBackslash: `${rest.out}.deps.json`.replaceAll("/", "\\") }
+        : {}),
     });
   };
 }
