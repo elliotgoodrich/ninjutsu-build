@@ -1,6 +1,6 @@
 {
   "name": "@ninjutsu-build/esbuild",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "An esbuild plugin for ninjutsu-build",
   "author": "Elliot Goodrich",
   "scripts": {
