@@ -25,8 +25,9 @@ jobs:
     - uses: seanmiddleditch/gha-setup-ninja@master
     - run: cd configure && npm ci
     - run: npm run configure
+    - name: Run trimja
+      uses: elliotgoodrich/trimja-action@release
     - run: ninja -k 0
-    - run: npm run docs
 
   deploy:
     needs: build

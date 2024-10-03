@@ -3,6 +3,7 @@
     "name": "Guides",
     "projectDocuments": [
         "Why Ninjutsu Build.md",
+        "Tutorial.md",
         "Ninjutsu Build Extras.md",
         "How to Write a Plugin.md",
     ],
