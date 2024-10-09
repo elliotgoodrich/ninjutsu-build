@@ -11,7 +11,7 @@ test("makeNodeRule", () => {
   const myNode = makeNodeRule(ninja, { name: "myNode" });
   const out2: "out2.txt" = myNode({
     out: "out2.txt",
-    in: "in.js",
+    in: "in.j",
     nodeArgs: "--allow-worker",
     args: "--foo",
     [implicitDeps]: ["other"],
