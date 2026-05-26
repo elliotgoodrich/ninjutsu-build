@@ -3,7 +3,7 @@
   "files": [
     "src/depfile.cts",
     "src/hookImport.mts",
-    "src/hookRequire.cts",
+    "src/hookRequire.ts",
     "src/node.ts",
     "src/runtime.cts",
     "src/testReporter.mts"

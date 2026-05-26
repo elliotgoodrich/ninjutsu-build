@@ -50,7 +50,7 @@ const node = platform() === "win32" ? "node.exe" : "node";
 function getNodeCommand(ninja: NinjaBuilder): string {
   return `${node} --require "${resolvePath(
     ninja,
-    "./hookRequire.cjs",
+    "./hookRequire.js",
   )}" --import "data:text/javascript,${getImportCode(ninja)}"`;
 }
 
