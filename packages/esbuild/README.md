@@ -20,12 +20,12 @@ JavaScript,
 ```ts
 import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeESBuildRule } from "@ninjutsu-build/esbuild";
-import { globSync } from "glob";
+import { globSync } from "node:fs";
 
 const ninja = new NinjaBuilder();
 const esbuild = makeESBuildRule(ninja);
 
-globSync("src/*.tests.ts", { posix: true }).map((ts) =>
+globSync("src/*.tests.ts").map((ts) =>
  esbuild({
     in: ts,
     out: join("$builddir", "dist", basename(file, extname(file)) + ".mjs"),

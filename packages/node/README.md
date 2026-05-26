@@ -23,7 +23,7 @@ Given the following simple JavaScript file that prints out numbers
 
 ```js
 // count.js
-const process = require('node:process');
+const process = require("node:process");
 
 const limit = parseInt(process.argv[2]);
 for (let i = 1; i < limit; ++i) {

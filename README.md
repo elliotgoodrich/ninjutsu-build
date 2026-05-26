@@ -41,7 +41,7 @@ some of the more common requirements:
 
 ## Prerequisites
 
-This project requires NodeJS (version 18 or later) and npm.
+This project requires NodeJS (version 22 or later) and npm.
 
 ## Installation
 
@@ -121,14 +121,14 @@ After changing any of the mentioned TypeScript files mentioned in the script, ju
 
 ### Setup
 
-  1. Install [`node`](https://nodejs.org/en/download) (>=18)
+  1. Install [`node`](https://nodejs.org/en/download) (>=22)
   2. Install [`ninja`](https://ninja-build.org/) (>=1.11)
   3. `npm ci --prefix configure`
-  4. `npm run configure` (or for a slightly faster option in node >=22 `node --run configure`)
+  4. `node --run configure`
 
 ### Building + linting + formatting + tests
 
   1. `ninja`
 
-If new files are added then you must run `npm run configure`/`node --run configure` again
+If new files are added then you must run `node --run configure` again
 to regenerate a file `build.ninja` that includes these new files.

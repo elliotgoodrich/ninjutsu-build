@@ -63,15 +63,15 @@ function concatConfig(
  * import { NinjaBuilder } from "@ninjutsu-build/core";
  * import { makeFormatRule } from "@ninjutsu-build/biome";
  * import { makeNodeTestRule } from "@ninjutsu-build/node";
- * import { globSync } from "glob";
+ * import { globSync } from "node:fs";
  *
  * const ninja = new NinjaBuilder();
  * const format = makeFormatRule(ninja, { configPath: "src/biome.json" });
  * const test = makeNodeTestRule(ninja);
  *
- * globSync("tests/*.test.js", { posix: true }).forEach((test) => {
+ * globSync("tests/*.test.js").forEach((testFile) => {
  *   const formatted = format({
- *     in: test,
+ *     in: testFile,
  *     configPath: "biome.json",
  *     args: "--no-errors-on-unmatched",
  *   });
@@ -285,7 +285,7 @@ export function makeFormatToRule(
  * ```ts
  * import { NinjaBuilder } from "@ninjutsu-build/core";
  * import { makeFormatRule, makeCheckFormattedRule } from "@ninjutsu-build/biome";
- * import { globSync } from "glob";
+ * import { globSync } from "node:fs";
  *
  * const ninja = new NinjaBuilder();
  *
@@ -293,8 +293,9 @@ export function makeFormatToRule(
  * const format = nonDestructive
  *   ? makeCheckFormattedRule(ninja)
  *   : makeFormatRule(ninja);
+ * const test = makeNodeTestRule(ninja);
  *
- * for (const js of globSync("src/*.test.js", { posix: true })) {
+ * for (const js of globSync("src/*.test.js")) {
  *   const formatted = format({
  *     in: js,
  *     configPath: "biome.json",
@@ -409,12 +410,12 @@ export function makeCheckFormattedRule(
  * ```ts
  * import { NinjaBuilder } from "@ninjutsu-build/core";
  * import { makeLintRule } from "@ninjutsu-build/biome";
- * import { globSync } from "glob";
+ * import { globSync } from "node:fs";
  *
  * const ninja = new NinjaBuilder();
  * const lint = makeLintRule(ninja);
  *
- * for (const js of globSync("src/*.js", { posix: true })) {
+ * for (const js of globSync("src/*.js")) {
  *   lint({
  *     in: js,
  *     configPath: "biome.json",
@@ -440,19 +441,19 @@ export function makeCheckFormattedRule(
  * import { NinjaBuilder, validations } from "@ninjutsu-build/core";
  * import { makeLintRule } from "@ninjutsu-build/biome";
  * import { makeNodeTestRule } from "@ninjutsu-build/node";
- * import { globSync } from "glob";
+ * import { globSync } from "node:fs";
  *
  * const ninja = new NinjaBuilder();
  * const lint = makeLintRule(ninja);
  * const test = makeNodeTestRule(ninja);
  *
- * for (const path of globSync("tests/*.test.js", { posix: true })) {
+ * for (const path of globSync("tests/*.test.js")) {
  *   const linted = lint({ in: path, configPath: "biome.json" });
  *   test({
  *     in: linted,
  *     out: "$builddir/test-results/" + path,
  *   });
- * )
+ * }
  *
  * writeFileSync("build.ninja", ninja.output);
  * ```
