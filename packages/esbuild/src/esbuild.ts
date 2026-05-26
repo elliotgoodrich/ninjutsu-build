@@ -64,14 +64,14 @@ function serializeBuildOptions(args: Omit<BuildOptions, "outfile">): string {
  * import { NinjaBuilder } from "@ninjutsu-build/core";
  * import { makeESBuildRule } from "@ninjutsu-build/esbuild";
  * import { makeFormatRule } from "@ninjutsu-build/biome";
- * import { globSync } from "glob";
+ * import { globSync } from "node:fs";
  *
  * const ninja = new NinjaBuilder();
  * const esbuild = makeESBuild(ninja);
  * const format = makeFormatRule(ninja);
  *
  * // Format all of our JavaScript files
- * const formatted = globSync("src/*.js", { posix: true }).map((js) =>
+ * const formatted = globSync("src/*.js").map((js) =>
  *  format({ in: js, configPath: "biome.json" })
  * );
  *

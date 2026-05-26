@@ -39,12 +39,12 @@ function concatConfig(
  * ```ts
  * import { NinjaBuilder } from "@ninjutsu-build/core";
  * import { makeTranspileRule } from "@ninjutsu-build/bun";
- * import { globSync } from "glob";
+ * import { globSync } from "node:fs";
  *
  * const ninja = new NinjaBuilder();
  * const transpile = makeTranspileRule(ninja);
  *
- * globSync("src/*.tests.ts", { posix: true }).map((ts) =>
+ * globSync("src/*.tests.ts").map((ts) =>
  *  transpile({
  *     in: ts,
  *     out: join("$builddir", "dist", basename(file, extname(file)) + ".mjs"),

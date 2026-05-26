@@ -23,6 +23,7 @@ import { NinjaBuilder } from "@ninjutsu-build/core";
 import { makeFormatRule, makeLintRule } from "@ninjutsu-build/biome";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
 import { writeFileSync } from "fs";
+import { globSync } from "node:fs";
 
 // Create a `NinjaBuilder` requiring 1.11 (for validations)
 const ninja = new NinjaBuilder({
@@ -35,10 +36,10 @@ const format = makeFormatRule(ninja);
 const lint = makeLintRule(ninja);
 const test = makeNodeTestRule(ninja);
 
-const biomeConfig = "biome.json",
+const biomeConfig = "biome.json";
 
 // For each test file, format, lint, and run it in node
-for (const js of globSync("tests/*.test.js", { posix: true })) {
+for (const js of globSync("tests/*.test.js")) {
   const formatted = format({ in: js, configPath: biomeConfig });
   const linted = lint({ in: formatted, configPath: biomeConfig });
   test({
