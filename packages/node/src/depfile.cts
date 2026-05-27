@@ -20,7 +20,7 @@ export function open(out: string): void {
 
 /**
  * If the currently running script has been run inside `node` with the
- * appropriate bootstrap scripts injected by `@ninjutsu-build/tsc`, then
+ * appropriate bootstrap scripts injected by `@ninjutsu-build/node`, then
  * add the specified `path` to ninja's dynamic dependencies the this script.
  * Otherwise do nothing.
  *
