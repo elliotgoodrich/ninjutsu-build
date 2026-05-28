@@ -6,7 +6,7 @@
     "indentWidth": 2,
     "lineWidth": 80,
     "lineEnding": "lf",
-    "ignore": []
+    "ignore": [".builddir/**", "**/dist/**"]
   },
   "linter": {
     "enabled": true,

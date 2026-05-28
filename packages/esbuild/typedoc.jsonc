@@ -1,5 +1,5 @@
 {
-    "$schema": "https://typedoc.org/schema.json",
-    "name": "esbuild",
-    "entryPoints": ["./src/esbuild.ts"],
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "esbuild",
+  "entryPoints": ["./src/esbuild.ts"]
 }

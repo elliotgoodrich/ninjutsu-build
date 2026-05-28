@@ -23,11 +23,6 @@ import {
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { platform } from "os";
-import isCi from "is-ci";
-
-if (isCi) {
-  console.log("Running in CI mode");
-}
 
 // Create a rule to run `npm ci` in a particular directory
 function makeNpmCiRule(ninja) {
@@ -115,7 +110,7 @@ function makeSWCRule(ninja) {
 }
 
 function formatAndLint(file) {
-  const formatted = format({ in: file });
+  const formatted = checkFormatted({ in: file });
   return lint({ in: formatted });
 }
 
@@ -134,7 +129,7 @@ const npmci = makeNpmCiRule(ninja);
 const { phony } = ninja;
 const packagesLinked = npmci({ in: workspacePkg, args: "--workspaces" });
 
-const biomeConfig = "configure/biome.json";
+const biomeConfig = "biome.json";
 
 // We would like to check whether `package.json` is formatted correctly.
 // Most of the rules inject a build-order dependency on `npm ci` having
@@ -163,12 +158,6 @@ const typecheck = makeTypeCheckRule(ninja, {
 });
 const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
-const format = isCi
-  ? checkFormatted
-  : makeFormatRule(ninja, {
-      configPath: biomeConfig,
-      [orderOnlyDeps]: toolsInstalled,
-    });
 const copy = makeCopyRule(ninja);
 const lint = makeLintRule(ninja, {
   configPath: biomeConfig,
@@ -178,8 +167,8 @@ const transpile = makeSWCRule(ninja, {
   [orderOnlyDeps]: toolsInstalled,
 });
 
-format({ in: "configure/configure.mjs" });
-const baseConfig = format({ in: "tsconfig.json" });
+checkFormatted({ in: "configure/configure.mjs" });
+const baseConfig = checkFormatted({ in: "tsconfig.json" });
 
 // Create a list of all targets that need to be ready before we
 // can run `typedoc`.
@@ -216,11 +205,11 @@ for (const cwd of workspaceJSON.workspaces) {
   ninja.output += "\n";
   ninja.comment(cwd);
 
-  // Format package.json
-  const packageJSON = format({ in: join(cwd, "package.json") });
+  // Check if package.json is formatted correctly
+  const packageJSON = checkFormatted({ in: join(cwd, "package.json") });
 
-  // Grab all TypeScript source files and format them
-  const tsconfig = format({ in: join(cwd, "tsconfig.json") });
+  // Grab all TypeScript source files and check if they are formatted correctly
+  const tsconfig = checkFormatted({ in: join(cwd, "tsconfig.json") });
   const sources = (await getEntryPointsFromConfig(ninja, tsconfig)).map(
     formatAndLint,
   );
@@ -271,7 +260,9 @@ for (const cwd of workspaceJSON.workspaces) {
     if (!existsSync(join(cwd, "tsconfig.tests.json"))) {
       return [];
     }
-    const testTSConfig = format({ in: join(cwd, "tsconfig.tests.json") });
+    const testTSConfig = checkFormatted({
+      in: join(cwd, "tsconfig.tests.json"),
+    });
     const tests = await getEntryPointsFromConfig(ninja, testTSConfig);
 
     if (tests.length === 0) {
@@ -284,13 +275,12 @@ for (const cwd of workspaceJSON.workspaces) {
       await typecheck({
         tsConfig: testTSConfig,
         out: join(cwd, "dist", "typechecked.stamp"),
-        [orderOnlyDeps]: [packageHasTypes, baseConfig, ...testsFormatted],
+        [orderOnlyDeps]: [packageHasTypes, baseConfig],
       })
     ).map((t) => {
       const js = transpile({
         in: t,
         outDir,
-        [orderOnlyDeps]: testsFormatted,
       });
       return test({
         in: js,
