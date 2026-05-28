@@ -1,5 +1,5 @@
 {
-    "$schema": "https://typedoc.org/schema.json",
-    "name": "core",
-    "entryPoints": ["./src/core.ts"],
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "core",
+  "entryPoints": ["./src/core.ts"]
 }

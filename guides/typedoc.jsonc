@@ -1,10 +1,10 @@
 {
-    "$schema": "https://typedoc.org/schema.json",
-    "name": "Guides",
-    "projectDocuments": [
-        "Why Ninjutsu Build.md",
-        "Tutorial.md",
-        "Ninjutsu Build Extras.md",
-        "How to Write a Plugin.md",
-    ],
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "Guides",
+  "projectDocuments": [
+    "Why Ninjutsu Build.md",
+    "Tutorial.md",
+    "Ninjutsu Build Extras.md",
+    "How to Write a Plugin.md"
+  ]
 }
