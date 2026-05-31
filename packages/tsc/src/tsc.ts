@@ -17,7 +17,7 @@ import type {
 import ts from "typescript";
 import { platform } from "node:os";
 import { relative, resolve } from "node:path";
-import { dirname, join } from "node:path/posix";
+import { dirname, join, relative as posixRelative } from "node:path/posix";
 import { readFile as readFileCb } from "node:fs";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
@@ -612,11 +612,22 @@ export function makeTSCRule(
         ...rest
       } = a;
       return showConfig(ninja, tsConfig).then(({ files, compilerOptions }) => {
+        const directory = dirname(getInput(tsConfig));
+        // `files` from showConfig are tsconfig-dir-relative.  Any outDir
+        // supplied by the caller is cwd-relative, so convert it to
+        // tsconfig-dir-relative to keep everything in one coordinate space.
+        const normalizedOverrideOptions =
+          overrideOptions.outDir !== undefined
+            ? {
+                ...overrideOptions,
+                outDir: posixRelative(directory, overrideOptions.outDir),
+              }
+            : overrideOptions;
         const commandLine = ts.parseCommandLine(
           files.map(normalizePath).concat(
             compilerOptionsToArrayBestEffort({
               ...compilerOptions,
-              ...overrideOptions,
+              ...normalizedOverrideOptions,
             }),
           ),
         );
@@ -625,7 +636,6 @@ export function makeTSCRule(
         // in `getOutputFileNames`
         commandLine.options.configFilePath = "";
 
-        const directory = dirname(getInput(tsConfig));
         const out = commandLine.fileNames
           .flatMap((path: string) =>
             ts.getOutputFileNames(commandLine, path, false),
