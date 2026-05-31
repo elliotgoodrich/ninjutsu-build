@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "ninja",
-    "configure": "node configure/ninjutsu.mjs",
+    "configure": "node --experimental-strip-types configure/ninjutsu.mts",
     "docs": "cd configure && npx typedoc --sortEntryPoints false",
     "format": "npx @biomejs/biome format --write ."
   }

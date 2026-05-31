@@ -1,6 +1,9 @@
 import {
+  type Input,
   NinjaBuilder,
   getInput,
+  getInputs,
+  needs,
   orderOnlyDeps,
   validations,
 } from "@ninjutsu-build/core";
@@ -10,11 +13,7 @@ import {
   makeTypeCheckRule,
 } from "@ninjutsu-build/tsc";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
-import {
-  makeCheckFormattedRule,
-  makeFormatRule,
-  makeLintRule,
-} from "@ninjutsu-build/biome";
+import { makeCheckFormattedRule, makeLintRule } from "@ninjutsu-build/biome";
 import { basename, dirname, extname, join, relative } from "node:path/posix";
 import {
   resolve as resolveNative,
@@ -25,14 +24,17 @@ import { fileURLToPath } from "node:url";
 import { platform } from "os";
 
 // Create a rule to run `npm ci` in a particular directory
-function makeNpmCiRule(ninja) {
+function makeNpmCiRule(ninja: NinjaBuilder) {
   const prefix = platform() === "win32" ? "cmd /c " : "";
   const npmci = ninja.rule("npmci", {
     command: prefix + "npm ci $args --silent",
     description: "npm ci $args",
     generator: 1,
+    out: needs<string>(),
+    in: needs<Input<string>>(),
+    args: "",
   });
-  return (a) => {
+  return (a: Omit<Parameters<typeof npmci>[0], "out">) => {
     const { args = "", ...rest } = a;
     const cwd = dirname(getInput(a.in));
     const withCwd = cwd !== "." ? ` --prefix ${cwd}` : "";
@@ -45,7 +47,7 @@ function makeNpmCiRule(ninja) {
   };
 }
 
-function makeTarRule(ninja) {
+function makeTarRule(ninja: NinjaBuilder) {
   // Intentionally avoid using `$in` as it must be the full path of the files
   // we want to add in order for ninja to set up the dependencies correctly, but
   // most of the time we would like to `tar` from a subdirectory.  So we keep
@@ -54,30 +56,40 @@ function makeTarRule(ninja) {
   const tar = ninja.rule("tar", {
     command: "tar -czf $out $args $files",
     description: "Creating archive $out",
+    out: needs<string>(),
+    in: needs<readonly Input<string>[]>(),
+    args: "",
+    files: needs<string>(),
   });
-  return (a) => {
+  return (a: Omit<Parameters<typeof tar>[0], "files"> & { dir?: string }) => {
     const { dir, ...rest } = a;
     return tar({
       ...rest,
       files:
-        dir === undefined ? a.in : a.in.map((i) => relative(dir, i)).join(" "),
+        dir === undefined
+          ? getInputs(a.in).join(" ")
+          : getInputs(a.in)
+              .map((i: string) => relative(dir, i))
+              .join(" "),
       args: a.dir === undefined ? undefined : "-C " + a.dir,
     });
   };
 }
 
-function makeCopyRule(ninja) {
+function makeCopyRule(ninja: NinjaBuilder) {
   return ninja.rule("copy", {
     command: "cp $in $out",
     description: "Copying $in to $out",
+    out: needs<string>(),
+    in: needs<Input<string>>(),
   });
 }
 
 // Given a path to a JS file, return the filename of the
 // resulting TS file
-function getTSFileName(jspath) {
+function getTSFileName(jspath: string): string {
   const ext = extname(jspath);
-  const extLookup = {
+  const extLookup: Record<string, string> = {
     ".ts": ".js",
     ".mts": ".mjs",
     ".cts": ".cjs",
@@ -87,7 +99,12 @@ function getTSFileName(jspath) {
 }
 
 // Create a rule to run `swc`, which we used to transpile TypeScript
-function makeSWCRule(ninja) {
+function makeSWCRule(
+  ninja: NinjaBuilder,
+  options: {
+    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
+  } = {},
+) {
   const swcPath = relativeNative(
     resolveNative(process.cwd(), ninja.outputDir),
     fileURLToPath(import.meta.resolve("@swc/cli")),
@@ -96,8 +113,14 @@ function makeSWCRule(ninja) {
   const swc = ninja.rule("swc", {
     command: `${node} ${swcPath} $in -o $out -q $args`,
     description: "Transpiling $in",
+    out: needs<string>(),
+    in: needs<Input<string>>(),
+    args: needs<string>(),
+    ...options,
   });
-  return (a) => {
+  return (
+    a: Omit<Parameters<typeof swc>[0], "out" | "args"> & { outDir: string },
+  ) => {
     const { outDir, ...rest } = a;
     const input = getInput(a.in);
     const type = extname(input) === ".mts" ? "es6" : "commonjs";
@@ -109,7 +132,7 @@ function makeSWCRule(ninja) {
   };
 }
 
-function formatAndLint(file) {
+function formatAndLint(file: string) {
   const formatted = checkFormatted({ in: file });
   return lint({ in: formatted });
 }
@@ -120,7 +143,7 @@ const ninja = new NinjaBuilder({
 });
 
 const workspacePkg = "package.json";
-const workspaceJSON = JSON.parse(readFileSync(workspacePkg));
+const workspaceJSON = JSON.parse(readFileSync(workspacePkg, "utf-8"));
 
 ninja.output += "\n";
 ninja.comment("Rules + Installation");
@@ -137,11 +160,11 @@ const biomeConfig = "biome.json";
 // `npm ci` so we have a cycle (in JS only, ninja is happy with a cycle
 // containing a validations edge).  This means it's a bit convoluted to
 // create the `checkFormatted` rule but that what the code below does.
-let checkFormatted;
+let checkFormatted!: ReturnType<typeof makeCheckFormattedRule>;
 
 const toolsInstalled = npmci({
   in: "configure/package.json",
-  [validations]: (toolsInstalled) => {
+  [validations]: (toolsInstalled: string) => {
     checkFormatted = makeCheckFormattedRule(ninja, {
       configPath: biomeConfig,
       [orderOnlyDeps]: toolsInstalled,
@@ -167,8 +190,22 @@ const transpile = makeSWCRule(ninja, {
   [orderOnlyDeps]: toolsInstalled,
 });
 
-checkFormatted({ in: "configure/ninjutsu.mjs" });
 const baseConfig = checkFormatted({ in: "tsconfig.json" });
+const configTSConfig = checkFormatted({ in: "configure/tsconfig.json" });
+const configureTypecheckedStamp = join(
+  ".builddir",
+  "configure",
+  "typechecked.stamp",
+);
+await typecheck({
+  tsConfig: configTSConfig,
+  out: configureTypecheckedStamp,
+  [orderOnlyDeps]: [toolsInstalled, baseConfig],
+});
+checkFormatted({
+  in: "configure/ninjutsu.mts",
+  [validations]: () => configureTypecheckedStamp,
+});
 
 // Create a list of all targets that need to be ready before we
 // can run `typedoc`.
@@ -269,7 +306,7 @@ for (const cwd of workspaceJSON.workspaces) {
       return [];
     }
 
-    const testsFormatted = tests.map(formatAndLint);
+    tests.forEach(formatAndLint);
 
     return (
       await typecheck({
@@ -302,7 +339,7 @@ for (const cwd of workspaceJSON.workspaces) {
     //   - package.json
     //   - contents of `lib`
     //   - contents of `dist`
-    const stageForTar = (args) => {
+    const stageForTar = (args: { in: Input<string> }) => {
       const { in: _in, ...rest } = args;
       return copy({
         in: _in,
