@@ -114,3 +114,37 @@ test("makeTypeCheckRule", () => {
     ],
   );
 });
+
+test("makeTSCRule with tsConfig uses outDir relative to cwd, not tsconfig dir", async () => {
+  const ninja = new NinjaBuilder();
+  const tsc = makeTSCRule(ninja);
+
+  // packages/tsc/tsconfig.json lists src/tsc.ts and src/parseOutput.mts.
+  // The outDir is cwd-relative ("packages/tsc/dist"). Before the fix, the
+  // tsConfig branch would mix coordinate spaces and produce paths like
+  // "dist/tsc.d.ts" (which when joined with "packages/tsc" gave "dist/tsc.d.ts"
+  // via "../dist/tsc.d.ts") instead of "packages/tsc/dist/tsc.d.ts".
+  const out = await tsc({
+    tsConfig: "packages/tsc/tsconfig.json",
+    compilerOptions: {
+      declaration: true,
+      emitDeclarationOnly: true,
+      outDir: "packages/tsc/dist",
+    },
+  });
+
+  assert.deepEqual(out.sort(), [
+    "packages/tsc/dist/parseOutput.d.mts",
+    "packages/tsc/dist/tsc.d.ts",
+  ]);
+
+  // Verify the generated ninja build statement uses the correct output paths.
+  // tsconfig.json lists src/tsc.ts first, so tsc.d.ts is the primary output
+  // and parseOutput.d.mts is the implicit output.
+  assert.ok(
+    ninja.output.includes(
+      "build packages/tsc/dist/tsc.d.ts | packages/tsc/dist/parseOutput.d.mts: tsc packages/tsc/tsconfig.json\n",
+    ),
+    `ninja.output missing expected build line.\nActual output:\n${ninja.output}`,
+  );
+});
