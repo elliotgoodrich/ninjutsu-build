@@ -612,11 +612,23 @@ export function makeTSCRule(
         ...rest
       } = a;
       return showConfig(ninja, tsConfig).then(({ files, compilerOptions }) => {
+        const directory = dirname(getInput(tsConfig));
+
+        // `files` from showConfig are tsconfig-dir-relative. Any outDir
+        // supplied by the caller is cwd-relative, so convert it to
+        // tsconfig-dir-relative to keep everything in one coordinate space.
+        const normalizedOverrideOptions =
+          overrideOptions.outDir !== undefined
+            ? {
+                ...overrideOptions,
+                outDir: relative(directory, overrideOptions.outDir),
+              }
+            : overrideOptions;
         const commandLine = ts.parseCommandLine(
           files.map(normalizePath).concat(
             compilerOptionsToArrayBestEffort({
               ...compilerOptions,
-              ...overrideOptions,
+              ...normalizedOverrideOptions,
             }),
           ),
         );
@@ -625,7 +637,6 @@ export function makeTSCRule(
         // in `getOutputFileNames`
         commandLine.options.configFilePath = "";
 
-        const directory = dirname(getInput(tsConfig));
         const out = commandLine.fileNames
           .flatMap((path: string) =>
             ts.getOutputFileNames(commandLine, path, false),
