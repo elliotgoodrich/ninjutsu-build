@@ -314,6 +314,9 @@ for (const cwd of workspaceJSON.workspaces) {
     toPack.push(stageForTar({ in: join(cwd, "README.md") }));
     toPack.push(stageForTar({ in: packageJSON }));
     toPack = toPack.concat(javascript.map((file) => stageForTar({ in: file })));
+    toPack = toPack.concat(
+      typeDeclarations.map((file) => stageForTar({ in: file })),
+    );
 
     return [
       tar({
