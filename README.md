@@ -8,7 +8,7 @@ commonly used JavaScript tools, `@ninjutsu-build` can be used to orchestrate
 your JavaScript and TypeScript builds.
 
 Ninjutsu Build is built using itself. You can see the
-[configure.mjs](configure/configure.mjs) script used to generate the
+[ninjutsu.mjs](configure/ninjutsu.mjs) script used to generate the
 `build.ninja` file.
 
 ## Why Ninjutsu Build?

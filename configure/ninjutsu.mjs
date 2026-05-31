@@ -167,7 +167,7 @@ const transpile = makeSWCRule(ninja, {
   [orderOnlyDeps]: toolsInstalled,
 });
 
-checkFormatted({ in: "configure/configure.mjs" });
+checkFormatted({ in: "configure/ninjutsu.mjs" });
 const baseConfig = checkFormatted({ in: "tsconfig.json" });
 
 // Create a list of all targets that need to be ready before we
