@@ -123,12 +123,16 @@ After changing any of the mentioned TypeScript files mentioned in the script, ju
 
   1. Install [`node`](https://nodejs.org/en/download) (>=22)
   2. Install [`ninja`](https://ninja-build.org/) (>=1.11)
-  3. `npm ci --prefix configure`
+  4. `node --run setup`
   4. `node --run configure`
 
-### Building + linting + formatting + tests
+### Building + linting + checking formatting + tests
 
   1. `ninja`
+
+### Formatting
+
+  1. `node --run format`
 
 If new files are added then you must run `node --run configure` again
 to regenerate a file `build.ninja` that includes these new files.

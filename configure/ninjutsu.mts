@@ -14,7 +14,7 @@ import {
 } from "@ninjutsu-build/tsc";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
 import { makeCheckFormattedRule, makeLintRule } from "@ninjutsu-build/biome";
-import { basename, dirname, extname, join, relative } from "node:path/posix";
+import { basename, extname, join, relative } from "node:path/posix";
 import {
   resolve as resolveNative,
   relative as relativeNative,
@@ -22,30 +22,6 @@ import {
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { platform } from "os";
-
-// Create a rule to run `npm ci` in a particular directory
-function makeNpmCiRule(ninja: NinjaBuilder) {
-  const prefix = platform() === "win32" ? "cmd /c " : "";
-  const npmci = ninja.rule("npmci", {
-    command: prefix + "npm ci $args --silent",
-    description: "npm ci $args",
-    generator: 1,
-    out: needs<string>(),
-    in: needs<Input<string>>(),
-    args: "",
-  });
-  return (a: Omit<Parameters<typeof npmci>[0], "out">) => {
-    const { args = "", ...rest } = a;
-    const cwd = dirname(getInput(a.in));
-    const withCwd = cwd !== "." ? ` --prefix ${cwd}` : "";
-    return npmci({
-      ...a,
-      out: join(cwd, "node_modules", ".package-lock.json"),
-      args: withCwd + args,
-      ...rest,
-    });
-  };
-}
 
 function makeTarRule(ninja: NinjaBuilder) {
   // Intentionally avoid using `$in` as it must be the full path of the files
@@ -146,49 +122,21 @@ const workspacePkg = "package.json";
 const workspaceJSON = JSON.parse(readFileSync(workspacePkg, "utf-8"));
 
 ninja.output += "\n";
-ninja.comment("Rules + Installation");
-const npmci = makeNpmCiRule(ninja);
+ninja.comment("Rules");
 
 const { phony } = ninja;
-const packagesLinked = npmci({ in: workspacePkg, args: "--workspaces" });
-
 const biomeConfig = "biome.json";
-
-// We would like to check whether `package.json` is formatted correctly.
-// Most of the rules inject a build-order dependency on `npm ci` having
-// run correctly, but we also need a validation dependency from running
-// `npm ci` so we have a cycle (in JS only, ninja is happy with a cycle
-// containing a validations edge).  This means it's a bit convoluted to
-// create the `checkFormatted` rule but that what the code below does.
-let checkFormatted!: ReturnType<typeof makeCheckFormattedRule>;
-
-const toolsInstalled = npmci({
-  in: "configure/package.json",
-  [validations]: (toolsInstalled: string) => {
-    checkFormatted = makeCheckFormattedRule(ninja, {
-      configPath: biomeConfig,
-      [orderOnlyDeps]: toolsInstalled,
-    });
-    // Add a validation that `package.json` is formatted correctly.
-    // If we formatted after running `npmci` it would cause us to run it again
-    return checkFormatted({ in: "configure/package.json" })[validations];
-  },
+const checkFormatted = makeCheckFormattedRule(ninja, {
+  configPath: biomeConfig,
 });
 
-const tsc = makeTSCRule(ninja, { [orderOnlyDeps]: toolsInstalled });
-const typecheck = makeTypeCheckRule(ninja, {
-  [orderOnlyDeps]: toolsInstalled,
-});
+const tsc = makeTSCRule(ninja);
+const typecheck = makeTypeCheckRule(ninja);
 const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
 const copy = makeCopyRule(ninja);
-const lint = makeLintRule(ninja, {
-  configPath: biomeConfig,
-  [orderOnlyDeps]: toolsInstalled,
-});
-const transpile = makeSWCRule(ninja, {
-  [orderOnlyDeps]: toolsInstalled,
-});
+const lint = makeLintRule(ninja, { configPath: biomeConfig });
+const transpile = makeSWCRule(ninja);
 
 const baseConfig = checkFormatted({ in: "tsconfig.json" });
 const configTSConfig = checkFormatted({ in: "configure/tsconfig.json" });
@@ -200,7 +148,7 @@ const configureTypecheckedStamp = join(
 await typecheck({
   tsConfig: configTSConfig,
   out: configureTypecheckedStamp,
-  [orderOnlyDeps]: [toolsInstalled, baseConfig],
+  [orderOnlyDeps]: baseConfig,
 });
 checkFormatted({
   in: "configure/ninjutsu.mts",
@@ -229,15 +177,11 @@ for (const cwd of workspaceJSON.workspaces) {
 
   // Assume there is a target "@ninjutsu-build/foo/runnable" when the
   // `foo` package can be executed.
-  const dependenciesRunnable = [packagesLinked].concat(
-    localDependecies.map((d) => `${d}/runnable`),
-  );
+  const dependenciesRunnable = localDependecies.map((d) => `${d}/runnable`);
 
   // Assume there is a target "@ninjutsu-build/foo/typed" when the `foo`
   // package has all type declarations
-  const dependenciesTyped = [packagesLinked].concat(
-    localDependecies.map((d) => `${d}/typed`),
-  );
+  const dependenciesTyped = localDependecies.map((d) => `${d}/typed`);
 
   ninja.output += "\n";
   ninja.comment(cwd);
