@@ -9,8 +9,9 @@
     "integration"
   ],
   "scripts": {
-    "build": "ninja",
+    "setup": "npm ci && npm ci --prefix configure",
     "configure": "node --experimental-strip-types configure/ninjutsu.mts",
+    "build": "ninja",
     "docs": "cd configure && npx typedoc --sortEntryPoints false",
     "format": "npx @biomejs/biome format --write ."
   }
