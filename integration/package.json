@@ -23,7 +23,9 @@
     "@ninjutsu-build/biome": "*",
     "@ninjutsu-build/esbuild": "*",
     "@ninjutsu-build/node": "*",
+    "@ninjutsu-build/swc": "*",
     "@ninjutsu-build/tsc": "*",
+    "@swc/cli": "^0.4.0",
     "@types/node": "^20.9.0",
     "typescript": "^5.2.2"
   }
