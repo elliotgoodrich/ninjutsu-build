@@ -1,4 +1,4 @@
 {
   "extends": "../../tsconfig",
-  "files": ["src/node.test.mts"]
+  "files": ["src/node.test.mts", "src/testReporter.test.mts"]
 }

@@ -7,7 +7,7 @@
     "test": "ninja node -C ../.."
   },
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=22"
   },
   "main": "dist/node.js",
   "exports": {
