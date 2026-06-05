@@ -5,6 +5,7 @@
     "packages/core",
     "packages/esbuild",
     "packages/node",
+    "packages/swc",
     "packages/tsc",
     "integration"
   ],

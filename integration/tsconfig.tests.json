@@ -4,6 +4,7 @@
     "src/biome.test.mts",
     "src/esbuild.test.mts",
     "src/node.test.mts",
+    "src/swc.test.mts",
     "src/tsc.test.mts"
   ]
 }

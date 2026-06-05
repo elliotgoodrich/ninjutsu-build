@@ -1,0 +1,38 @@
+{
+  "name": "@ninjutsu-build/swc",
+  "version": "0.1.0",
+  "description": "An SWC plugin for ninjutsu-build",
+  "author": "Elliot Goodrich",
+  "scripts": {
+    "test": "ninja @ninjutsu-build/swc -C ../.."
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "dist/swc.mjs",
+  "exports": {
+    ".": "./dist/swc.mjs"
+  },
+  "keywords": [
+    "ninjutsu",
+    "ninjutsu-build",
+    "ninja",
+    "ninja-build",
+    "build",
+    "swc"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build.git",
+    "directory": "packages/swc"
+  },
+  "homepage": "https://github.com/elliotgoodrich/ninjutsu-build",
+  "bugs": {
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
+  },
+  "peerDependencies": {
+    "@ninjutsu-build/core": "^0.10.0",
+    "@swc/cli": "^0.4.0"
+  }
+}
