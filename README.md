@@ -36,6 +36,8 @@ some of the more common requirements:
     for transpiling and bundling TypeScript/JavaScript using `esbuild`
   - [`node`](packages/node/README.md) ([npm `@ninjutsu-build/node`](https://www.npmjs.com/package/@ninjutsu-build/node))
     for running `node` (and node's test runner) while tracking all JavaScript dependencies
+  - [`swc`](packages/swc/README.md) ([npm `@ninjutsu-build/swc`](https://www.npmjs.com/package/@ninjutsu-build/swc))
+    for transpiling TypeScript to JavaScript using `swc`
   - [`tsc`](packages/tsc/README.md) ([npm `@ninjutsu-build/tsc`](https://www.npmjs.com/package/@ninjutsu-build/tsc))
     for compiling TypeScript to JavaScript using `tsc` while tracking all TypeScript dependencies
 

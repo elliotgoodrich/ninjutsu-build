@@ -7,6 +7,7 @@
     "@ninjutsu-build/biome": "^0.11.0",
     "@ninjutsu-build/core": "^0.10.0",
     "@ninjutsu-build/node": "^0.16.0",
+    "@ninjutsu-build/swc": "^0.1.0",
     "@ninjutsu-build/tsc": "^0.16.0",
     "@swc/cli": "^0.4.0",
     "@swc/core": "^1.6.13",
