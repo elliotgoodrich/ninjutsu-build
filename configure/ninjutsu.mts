@@ -13,15 +13,10 @@ import {
   makeTypeCheckRule,
 } from "@ninjutsu-build/tsc";
 import { makeNodeTestRule } from "@ninjutsu-build/node";
+import { makeSWCRule } from "@ninjutsu-build/swc";
 import { makeCheckFormattedRule, makeLintRule } from "@ninjutsu-build/biome";
 import { basename, extname, join, relative } from "node:path/posix";
-import {
-  resolve as resolveNative,
-  relative as relativeNative,
-} from "node:path";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { platform } from "os";
 
 function makeTarRule(ninja: NinjaBuilder) {
   // Intentionally avoid using `$in` as it must be the full path of the files
@@ -61,49 +56,30 @@ function makeCopyRule(ninja: NinjaBuilder) {
   });
 }
 
-// Given a path to a JS file, return the filename of the
-// resulting TS file
-function getTSFileName(jspath: string): string {
-  const ext = extname(jspath);
-  const extLookup: Record<string, string> = {
-    ".ts": ".js",
-    ".mts": ".mjs",
-    ".cts": ".cjs",
-  };
-
-  return basename(jspath, ext) + extLookup[ext];
-}
-
-// Create a rule to run `swc`, which we used to transpile TypeScript
-function makeSWCRule(
-  ninja: NinjaBuilder,
-  options: {
-    [orderOnlyDeps]?: Input<string> | readonly Input<string>[];
-  } = {},
-) {
-  const swcPath = relativeNative(
-    resolveNative(process.cwd(), ninja.outputDir),
-    fileURLToPath(import.meta.resolve("@swc/cli")),
-  );
-  const node = platform() === "win32" ? "node.exe" : "node";
-  const swc = ninja.rule("swc", {
-    command: `${node} ${swcPath} $in -o $out -q $args`,
-    description: "Transpiling $in",
-    out: needs<string>(),
-    in: needs<Input<string>>(),
-    args: needs<string>(),
-    ...options,
-  });
-  return (
-    a: Omit<Parameters<typeof swc>[0], "out" | "args"> & { outDir: string },
-  ) => {
-    const { outDir, ...rest } = a;
+function makeTranspileRule(ninja: NinjaBuilder) {
+  const swc = makeSWCRule(ninja);
+  return (a: { in: Input<string>; outDir: string }) => {
     const input = getInput(a.in);
-    const type = extname(input) === ".mts" ? "es6" : "commonjs";
+    const ext = extname(input);
+    const jsExt: Record<string, string> = {
+      ".ts": ".js",
+      ".mts": ".mjs",
+      ".cts": ".cjs",
+    };
+    const type = ext === ".mts" ? "es6" : "commonjs";
     return swc({
-      out: join(outDir, getTSFileName(getInput(a.in))),
-      ...rest,
-      args: `-C jsc.target=es2018 -C module.type=${type} -C jsc.parser.syntax=typescript -C module.importInterop=node`,
+      in: a.in,
+      out: join(a.outDir, basename(input, ext) + jsExt[ext]),
+      args: [
+        "-C",
+        `module.type=${type}`,
+        "-C",
+        "jsc.target=es2018",
+        "-C",
+        "jsc.parser.syntax=typescript",
+        "-C",
+        "module.importInterop=node",
+      ],
     });
   };
 }
@@ -136,7 +112,7 @@ const test = makeNodeTestRule(ninja);
 const tar = makeTarRule(ninja);
 const copy = makeCopyRule(ninja);
 const lint = makeLintRule(ninja, { configPath: biomeConfig });
-const transpile = makeSWCRule(ninja);
+const transpile = makeTranspileRule(ninja);
 
 const baseConfig = checkFormatted({ in: "tsconfig.json" });
 const configTSConfig = checkFormatted({ in: "configure/tsconfig.json" });
