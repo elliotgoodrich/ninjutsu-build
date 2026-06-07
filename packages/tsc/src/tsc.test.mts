@@ -5,7 +5,7 @@ import {
   makeTypeCheckRule,
   compilerOptionsToString,
   compilerOptionsToArray,
-} from "./tsc.js";
+} from "@ninjutsu-build/tsc";
 import {
   NinjaBuilder,
   implicitDeps,
