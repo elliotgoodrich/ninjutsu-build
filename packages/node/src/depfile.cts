@@ -1,10 +1,12 @@
 import { openSync, writeFileSync } from "node:fs";
 import { resolve, relative, isAbsolute } from "node:path";
+import process from "node:process";
 
 declare global {
-  var fd: number;
   var cwd: string | undefined;
 }
+
+let buffer = "";
 
 /**
  * Open the corresponding depfile for the specified `out` file.  Note that this
@@ -14,8 +16,11 @@ declare global {
  */
 export function open(out: string): void {
   global.cwd = resolve();
-  global.fd = openSync(out + ".depfile", "w");
-  writeFileSync(global.fd, out + ":");
+  const fd = openSync(`${out}.depfile`, "w");
+  buffer = out + ":";
+  process.on("exit", () => {
+    writeFileSync(fd, buffer);
+  });
 }
 
 /**
@@ -71,7 +76,7 @@ export function open(out: string): void {
  * ```
  */
 export function addDependency(path: string): void {
-  const { cwd, fd } = global;
+  const { cwd } = global;
   if (cwd !== undefined) {
     const relPath = relative(cwd, path);
     const dependency = (
@@ -79,6 +84,6 @@ export function addDependency(path: string): void {
         ? relPath
         : path
     ).replaceAll("\\", "/");
-    writeFileSync(fd, " " + dependency);
+    buffer += " " + dependency;
   }
 }
