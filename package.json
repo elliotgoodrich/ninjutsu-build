@@ -3,6 +3,7 @@
     "packages/biome",
     "packages/bun",
     "packages/core",
+    "packages/dprint",
     "packages/esbuild",
     "packages/node",
     "packages/swc",

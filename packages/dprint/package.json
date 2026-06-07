@@ -1,0 +1,38 @@
+{
+  "name": "@ninjutsu-build/dprint",
+  "version": "0.1.0",
+  "description": "A dprint plugin for ninjutsu-build",
+  "author": "Elliot Goodrich",
+  "scripts": {
+    "test": "ninja @ninjutsu-build/dprint -C ../.."
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "dist/dprint.mjs",
+  "exports": {
+    ".": "./dist/dprint.mjs"
+  },
+  "keywords": [
+    "ninjutsu",
+    "ninjutsu-build",
+    "ninja",
+    "ninja-build",
+    "build",
+    "dprint"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build.git",
+    "directory": "packages/dprint"
+  },
+  "homepage": "https://github.com/elliotgoodrich/ninjutsu-build",
+  "bugs": {
+    "url": "https://github.com/elliotgoodrich/ninjutsu-build/issues"
+  },
+  "peerDependencies": {
+    "@ninjutsu-build/core": "^0.10.0",
+    "dprint": "^0.45.0"
+  }
+}
