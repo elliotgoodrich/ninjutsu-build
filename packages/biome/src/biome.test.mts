@@ -5,7 +5,7 @@ import {
   makeLintRule,
   makeFormatRule,
   makeFormatToRule,
-} from "./biome.js";
+} from "@ninjutsu-build/biome";
 import {
   NinjaBuilder,
   implicitDeps,
