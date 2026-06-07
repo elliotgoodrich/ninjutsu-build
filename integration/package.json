@@ -21,6 +21,7 @@
   "devDependencies": {
     "@ninjutsu-build/core": "*",
     "@ninjutsu-build/biome": "*",
+    "@ninjutsu-build/dprint": "*",
     "@ninjutsu-build/esbuild": "*",
     "@ninjutsu-build/node": "*",
     "@ninjutsu-build/swc": "*",

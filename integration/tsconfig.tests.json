@@ -2,6 +2,7 @@
   "extends": "../tsconfig",
   "files": [
     "src/biome.test.mts",
+    "src/dprint.test.mts",
     "src/esbuild.test.mts",
     "src/node.test.mts",
     "src/swc.test.mts",
