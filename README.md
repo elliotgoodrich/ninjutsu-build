@@ -32,6 +32,8 @@ some of the more common requirements:
     for linting and formatting using `biomejs
   - [`bun`](packages/bun/README.md) ([npm `@ninjutsu-build/bun`](https://www.npmjs.com/package/@ninjutsu-build/bun))
     for transpiling TypeScript to JavaScript using `bun`
+  - [`dprint`](packages/dprint/README.md) ([npm `@ninjutsu-build/dprint`](https://www.npmjs.com/package/@ninjutsu-build/dprint))
+    for formatting using `dprint`
   - [`esbuild`](packages/esbuild/README.md) ([npm `@ninjutsu-build/esbuild`](https://www.npmjs.com/package/@ninjutsu-build/esbuild))
     for transpiling and bundling TypeScript/JavaScript using `esbuild`
   - [`node`](packages/node/README.md) ([npm `@ninjutsu-build/node`](https://www.npmjs.com/package/@ninjutsu-build/node))
