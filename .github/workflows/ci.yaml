@@ -22,12 +22,11 @@ jobs:
         node: [lts/-1, lts/*, latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
       with:
         node-version: ${{ matrix.node }}
         cache: 'npm'
-    - uses: seanmiddleditch/gha-setup-ninja@master
     - run: node --run setup
     - run: node --run configure
     - name: Run trimja
@@ -45,17 +44,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
       with:
         node-version: latest
         cache: 'npm'
-    - uses: seanmiddleditch/gha-setup-ninja@master
     - run: node --run setup
     - run: node --run configure
     - run: ninja -k 0 prep-for-docs
     - run: npm run docs
-    - uses: actions/upload-pages-artifact@v3
+    - uses: actions/upload-pages-artifact@v5
       with:
         path: "./docs"
-    - uses: actions/deploy-pages@v4
+    - uses: actions/deploy-pages@v5
