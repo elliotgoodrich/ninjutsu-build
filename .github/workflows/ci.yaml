@@ -22,15 +22,15 @@ jobs:
         node: [lts/-1, lts/*, latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v6
-    - uses: actions/setup-node@v6
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+    - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
       with:
         node-version: ${{ matrix.node }}
         cache: 'npm'
     - run: node --run setup
     - run: node --run configure
     - name: Run trimja
-      uses: elliotgoodrich/trimja-action@release
+      uses: elliotgoodrich/trimja-action@5029df3e1a452e6c5a88f62b578ff042cd81764c # v2.0.0
     - run: ninja -k 0
 
   deploy:
@@ -44,8 +44,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-    - uses: actions/checkout@v6
-    - uses: actions/setup-node@v6
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+    - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
       with:
         node-version: latest
         cache: 'npm'
@@ -53,7 +53,7 @@ jobs:
     - run: node --run configure
     - run: ninja -k 0 prep-for-docs
     - run: npm run docs
-    - uses: actions/upload-pages-artifact@v5
+    - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
       with:
         path: "./docs"
-    - uses: actions/deploy-pages@v5
+    - uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5
