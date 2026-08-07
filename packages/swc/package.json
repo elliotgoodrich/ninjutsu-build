@@ -33,6 +33,6 @@
   },
   "peerDependencies": {
     "@ninjutsu-build/core": "^0.10.0",
-    "@swc/cli": "^0.4.0"
+    "@swc/cli": "^0.8.1"
   }
 }
