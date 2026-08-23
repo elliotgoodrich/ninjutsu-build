@@ -1,5 +1,7 @@
 # Ninjutsu Build
 
+[![CI](https://github.com/elliotgoodrich/ninjutsu-build/actions/workflows/ci.yaml/badge.svg)](https://github.com/elliotgoodrich/ninjutsu-build/actions/workflows/ci.yaml)
+
 Orchestrate your build with TypeScript - execute it with native tools!
 
 `@ninjutsu-build/core` is a TypeScript library for creating
