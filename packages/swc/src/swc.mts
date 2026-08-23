@@ -71,7 +71,7 @@ export function makeSWCRule(
   const { args: defaultArgs, name = "swc", ...restOptions } = options;
   const swcPath = relativeNative(
     resolveNative(process.cwd(), ninja.outputDir),
-    fileURLToPath(import.meta.resolve("@swc/cli")),
+    fileURLToPath(import.meta.resolve("@swc/cli/bin/swc.js")),
   );
   const node = platform() === "win32" ? "node.exe" : "node";
   const swc = ninja.rule(name, {
