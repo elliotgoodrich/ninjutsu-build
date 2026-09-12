@@ -98,6 +98,55 @@ test("makeCheckFormattedRule with orderOnlyDeps on input", () => {
   });
 });
 
+test("configPath is space-separated from user args", () => {
+  // A single space must separate `args` from the injected `--config` flag,
+  // otherwise they glue into one invalid token (e.g.
+  // `--incremental--config dprint.json`).
+  {
+    const ninja = new NinjaBuilder();
+    const format = makeFormatRule(ninja);
+    format({ in: "bar.ts", configPath: "dprint.json", args: "--incremental" });
+    assert.match(
+      ninja.output,
+      /\n {2}args = --incremental --config dprint\.json\n/,
+    );
+  }
+  {
+    const ninja = new NinjaBuilder();
+    const formatTo = makeFormatToRule(ninja);
+    formatTo({
+      in: "$builddir/generated.ts",
+      out: "gen/generated.ts",
+      configPath: "dprint.json",
+      args: "--incremental",
+    });
+    assert.match(
+      ninja.output,
+      /\n {2}args = --incremental --config dprint\.json\n/,
+    );
+  }
+  {
+    const ninja = new NinjaBuilder();
+    const checkFormatted = makeCheckFormattedRule(ninja);
+    checkFormatted({
+      in: "ugly.ts",
+      configPath: "dprint.json",
+      args: "--incremental",
+    });
+    assert.match(
+      ninja.output,
+      /\n {2}args = --incremental --config dprint\.json\n/,
+    );
+  }
+});
+
+test("configPath with empty args has no leading space", () => {
+  const ninja = new NinjaBuilder();
+  const format = makeFormatRule(ninja);
+  format({ in: "bar.ts", configPath: "dprint.json" });
+  assert.match(ninja.output, /\n {2}args = --config dprint\.json\n/);
+});
+
 test("makeFormatRule with implicitDeps option", () => {
   const ninja = new NinjaBuilder();
   const format = makeFormatRule(ninja, {

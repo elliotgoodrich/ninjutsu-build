@@ -34,6 +34,16 @@ function concatConfig(
   return configPath === undefined ? arrayDeps : arrayDeps.concat(configPath);
 }
 
+// Append the `--config-path` flag to any user-supplied `args`, making sure the
+// two are separated by a space when `args` is non-empty.
+function withConfig(args: string, configPath: string | undefined): string {
+  if (configPath === undefined) {
+    return args;
+  }
+  const flag = "--config-path " + configPath;
+  return args === "" ? flag : args + " " + flag;
+}
+
 /**
  * Create a rule in the specified `ninja` builder with the optionally specified
  * `options.name` that will run `biome format` on the input file, overwriting its
@@ -149,8 +159,7 @@ export function makeFormatRule(
           };
     format({
       out: result[orderOnlyDeps],
-      args:
-        configPath === undefined ? args : args + "--config-path " + configPath,
+      args: withConfig(args, configPath),
       ...rest,
       [implicitDeps]: concatConfig(_implicitDeps, configPath),
       ...validation,
@@ -251,8 +260,7 @@ export function makeFormatToRule(
     return formatTo({
       ...rest,
       ...extra,
-      args:
-        configPath === undefined ? args : args + "--config-path " + configPath,
+      args: withConfig(args, configPath),
       [implicitDeps]: concatConfig(_implicitDeps, configPath),
     });
   };
@@ -369,8 +377,7 @@ export function makeCheckFormattedRule(
     const file = getInput(a.in);
     const validationFile = checkFormatted({
       out: `$builddir/.ninjutsu-build/biome/checkFormatted/${file}`,
-      args:
-        configPath === undefined ? args : args + "--config-path " + configPath,
+      args: withConfig(args, configPath),
       [implicitDeps]: concatConfig(_implicitDeps, configPath),
       ...rest,
     });
@@ -509,8 +516,7 @@ export function makeLintRule(
     const file = getInput(a.in);
     const validationFile = lint({
       out: `$builddir/.ninjutsu-build/biome/lint/${file}`,
-      args:
-        configPath === undefined ? args : args + "--config-path " + configPath,
+      args: withConfig(args, configPath),
       [implicitDeps]: concatConfig(_implicitDeps, configPath),
       ...rest,
     });
