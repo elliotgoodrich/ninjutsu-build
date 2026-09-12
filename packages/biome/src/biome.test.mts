@@ -97,6 +97,72 @@ test("makeCheckFormattedRule", () => {
   });
 });
 
+test("configPath is space-separated from user args", () => {
+  // A single space must separate `args` from the injected `--config-path`
+  // flag, otherwise they glue into one invalid token (e.g.
+  // `--no-errors-on-unmatched--config-path biome.json`).
+  {
+    const ninja = new NinjaBuilder();
+    const format = makeFormatRule(ninja);
+    format({
+      in: "bar.js",
+      configPath: "biome.json",
+      args: "--no-errors-on-unmatched",
+    });
+    assert.match(
+      ninja.output,
+      /\n {2}args = --no-errors-on-unmatched --config-path biome\.json\n/,
+    );
+  }
+  {
+    const ninja = new NinjaBuilder();
+    const formatTo = makeFormatToRule(ninja);
+    formatTo({
+      in: "ugly.js",
+      out: "nice.js",
+      configPath: "biome.json",
+      args: "--no-errors-on-unmatched",
+    });
+    assert.match(
+      ninja.output,
+      /\n {2}args = --no-errors-on-unmatched --config-path biome\.json\n/,
+    );
+  }
+  {
+    const ninja = new NinjaBuilder();
+    const checkFormatted = makeCheckFormattedRule(ninja);
+    checkFormatted({
+      in: "ugly.js",
+      configPath: "biome.json",
+      args: "--no-errors-on-unmatched",
+    });
+    assert.match(
+      ninja.output,
+      /\n {2}args = --no-errors-on-unmatched --config-path biome\.json\n/,
+    );
+  }
+  {
+    const ninja = new NinjaBuilder();
+    const lint = makeLintRule(ninja);
+    lint({
+      in: "foo.js",
+      configPath: "biome.json",
+      args: "--no-errors-on-unmatched",
+    });
+    assert.match(
+      ninja.output,
+      /\n {2}args = --no-errors-on-unmatched --config-path biome\.json\n/,
+    );
+  }
+});
+
+test("configPath with empty args has no leading space", () => {
+  const ninja = new NinjaBuilder();
+  const format = makeFormatRule(ninja);
+  format({ in: "bar.js", configPath: "biome.json" });
+  assert.match(ninja.output, /\n {2}args = --config-path biome\.json\n/);
+});
+
 test("format then lint", () => {
   const ninja = new NinjaBuilder();
   const format = makeFormatRule(ninja);
