@@ -339,6 +339,36 @@ describe("tsc", (suiteCtx) => {
     }
   });
 
+  test("getEntryPointsFromConfig with include", async (testCtx) => {
+    const dir = getTestDir(suiteCtx, testCtx);
+
+    const src = join(dir, "src");
+    mkdirSync(src);
+    writeFileSync(join(src, "a.mts"), "export const a: number = 1;\n");
+    writeFileSync(join(src, "b.mts"), "export const b: number = 2;\n");
+
+    writeFileSync(
+      join(src, "tsconfig.json"),
+      JSON.stringify(
+        {
+          include: ["*.mts"],
+          compilerOptions: {
+            skipLibCheck: true,
+          },
+        },
+        undefined,
+        4,
+      ),
+    );
+
+    const ninja = new NinjaBuilder({}, dir);
+    const entryPoints = await getEntryPointsFromConfig(
+      ninja,
+      "src/tsconfig.json",
+    );
+    assert.deepEqual(entryPoints.toSorted(), ["src/a.mts", "src/b.mts"]);
+  });
+
   // TODO: Check the `incremental` flag works correctly
   test("incremental", { todo: true });
 });
