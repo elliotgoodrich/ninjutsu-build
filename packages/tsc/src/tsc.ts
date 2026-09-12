@@ -230,7 +230,6 @@ export async function getEntryPointsFromConfig(
     // so instead we call out to `tsc --showConfig`.
     const { stdout } = await execFile(node, [
       tsc,
-      getTSCPath(ninja),
       "--showConfig",
       "--project",
       tsConfigPathRaw,
